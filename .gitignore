@@ -1,0 +1,5 @@
+*.vos
+*.glob
+*.vo*
+.*
+CoqMakefile*

@@ -1,0 +1,3 @@
+[submodule "datalogo"]
+	path = datalogo
+	url = https://github.com/audreyseo/datalogo

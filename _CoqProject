@@ -1,3 +1,4 @@
 -R . VeriFGH
 ./OrderedSemiring.v
 ./Datalogo.v
+./MagicSets.v

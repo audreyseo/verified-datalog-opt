@@ -1,6 +1,6 @@
 From VeriFGH Require Import OrderedSemiring.
 From Coq Require Import Structures.Equalities List ListSet Logic.FinFun String Vector Vectors.VectorEq Program.Equality Program.Program.
-
+(*
 Module Type Semiring.
   Parameter t: Type.
 End Semiring.
@@ -147,3 +147,4 @@ Module Datalog (D: HasEqDec) (Se: Semiring).
                
              
                        
+*)

@@ -16,6 +16,8 @@ use the following. (For more on installing Rocq using opam, see
 
 
 ```sh
+opam switch create 4.09.1
+eval $(opam env --switch=4.09.1)
 opam switch create datalog 4.10.0
 eval $(opam env)
 opam repo add coq-released https://coq.inria.fr/opam/released

@@ -1,5 +1,8 @@
 From VeriFGH Require Import OrderedSemiring.
 From Coq Require Import Structures.Equalities List ListSet Logic.FinFun String Vector Vectors.VectorEq Program.Equality Program.Program.
+
+
+
 (*
 Module Type Semiring.
   Parameter t: Type.
@@ -137,7 +140,57 @@ Module Datalog (D: HasEqDec) (Se: Semiring).
   Definition has_var (r: rel) (v: string) :=
     List.fold_left (fun acc v' => orb acc (String.eqb v' v)) (seq_vars (rel_vars r)) false.
 
-  
+ *)
+
+Variant rel_type :=
+  | idb
+  | edb.
+
+Structure rel :=
+  Relation
+    {
+      name: string;
+      num_args: nat;
+      args: Vector.t string num_args;
+      rtype : rel_type;
+      }.
+
+Variant rule : Type :=
+  | rule_def_empty (head: rel)
+  | rule_def (head: rel) (body: list rel)
+  | rule_def_exists (head: rel) (l: list string) (body: list rel).
+
+
+Definition safe_rel (idents: list string) (r: rel) :=
+  fold_left (fun acc arg => andb acc (set_mem string_dec arg idents)) true (args r).
+
+Local Open Scope list_scope.
+
+(* Fixpoint helper (bodies: list rel) res := *)
+(*   match bodies with *)
+(*   | List.nil => res *)
+(*   | b :: bs' => helper bs' ((to_list (args b)) ++ res) *)
+(*   end. *)
+
+Definition body_args (bodies: list rel) :=
+  let fn := (fix helper bs res :=
+               match bs with
+               | List.nil => res
+               | b :: bs' =>
+                   helper bs' ((to_list (args b)) ++ res)
+               end) in
+  fn bodies List.nil.
+
+
+
+(* Definition safe_rule (r: rule) := *)
+(*   match r with *)
+(*   | rule_def_empty _ => true *)
+(*   | rule_def hd body => List.fold_left (fun acc elmt => andb acc (safe_rel (to_list (args hd)) elmt)) body true *)
+(*   | rule_def_exists hd exists_args body => *)
+(*       let ba := body_args body in *)
+(*       andb (List.fold_left (fun acc elmt => andb acc (set_mem string_dec elmt ba)) (to_list (args hd)) true) *)
+(*            (List.fold_left *)
   
                          
 
@@ -147,4 +200,3 @@ Module Datalog (D: HasEqDec) (Se: Semiring).
                
              
                        
-*)

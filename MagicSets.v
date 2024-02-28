@@ -243,39 +243,67 @@ Qed.
     rewrite <- H2. rewrite <- H2. rewrite string_list_bijection1. reflexivity.
   Qed.
 
-  Definition string_choiceClass := @Choice.class 
+  Print ascii_seq_choiceType.
+  (* Section CanHasChoice. *)
+    (* Set Printing All. *)
+    Print choiceType.
+    Print Choice.type.
+    Print Choice.class_of.
+    Print Choice.mixin_of.
+    Print CanChoiceMixin.
+    
+    
+    
+  (*   Variables (T: choiceType) (sT: Type) (f: sT -> T). *)
+  (*   Lemma PCanHasChoice f': *)
+  (*     pcancel f f' -> *)
+  (*     hasChoice sT. *)
+  (*   Proof. *)
+      
+              
 
-  Definition string_choiceMixin := @CanChoiceMixin (seq Ascii.ascii) (string) string_of_list_ascii list_ascii_of_string string_cancel.
-  
-  Definition string_countMixin := Countable.Mixin string_pcancel.
-  Definition string_countClass := Countable.
+  (* Definition string_hasChoice := Choice. *)
+
+  (* Definition string_to_seq_ascii (s: string) := *)
+
+    
+    Definition string_choiceMixin := PcanChoiceMixin string_pcancel.
+
+    Definition string_eqMixin := eqtype.Equality.Mixin string_eqP.
+    Canonical string_eqType := @eqtype.Equality.Pack string string_eqMixin.
+    Definition string_choiceClass := Choice.Class string_eqMixin string_choiceMixin.
+    Canonical string_choiceType := Choice.Pack string_choiceClass.
+
   
 End AsciiChoice.
 
 Import AsciiChoice.
 
-
-
-
-
-Countable.ChoiceMixin
-
-Definition string_choiceMixin := @CanChoiceMixin (seq Ascii.ascii) (string) string_of_list_ascii list_ascii_of_string string_cancel.
-                                              
-
-Print ssreflect.choice.PcanChoiceMixin.
-
-
-Print Countable.mixin_of.
-
-Definition string_eqMixin := eqtype.Equality.Mixin string_eqP.
-Canonical string_eqType := @eqtype.Equality.Pack string string_eqMixin.
-
-Lemma symbols_seq_finite :
-  fintype.Finite.axiom symbols_seq.
+Lemma symbols_size :
+  size symbols_seq > 0.
 Proof.
-  unfold fintype.Finite.axiom.
-  move=> a.
-  unfold symbols_seq.
-  simpl.
+  simpl. econstructor.
+Qed.
+
+Definition symbols_seq_finType := adhoc_seq_sub_finType symbols_seq.
+
+(* Definition constants_seq := [:: "x"; "y"; "z"]. *)
+
+(* Lemma constants_size : *)
+(*   size constants_seq > 0. *)
+(* Proof. *)
+(*   simpl. *)
+(*   econstructor. *)
+(* Qed. *)
+
+(* Definition constype := adhoc_seq_sub_finType constants_seq. *)
+
+(* Require Import octalgo.datalogcert.syntax. *)
+(* Set Printing All. *)
+(* Eval compute in (@RawGAtom). *)
+(* Print Finite.sort. *)
+(* Print symtype. *)
+(* Eval compute in (syntax.RawGAtom "R" [:: "x"]). *)
+
+  
   

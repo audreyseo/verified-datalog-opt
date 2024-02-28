@@ -27,51 +27,6 @@ Print Finite.Mixin.
 
 (* Module CountableStrings. *)
 
-  Fixpoint list_ascii_of_string (s: string): list Ascii.ascii :=
-    match s with
-    | EmptyString => nil
-    | String a s' =>
-        cons a (list_ascii_of_string s')
-    end.
-
-  Fixpoint string_of_list_ascii (l: list Ascii.ascii) : string :=
-    match l with
-    | nil => EmptyString
-    | cons a s => String a (string_of_list_ascii s)
-    end.
-  
-(*   Definition pickle c := *)
-(*     CodeSeq.code (List.map Ascii.nat_of_ascii (list_ascii_of_string c)). *)
-
-(*   Definition unpickle c := *)
-(*     string_of_list_ascii (List.map Ascii.ascii_of_nat (CodeSeq.decode c)). *)
-
-Lemma string_list_bijection1 :
-  forall (s: string),
-    string_of_list_ascii (list_ascii_of_string s) = s.
-Proof.
-  induction s; simpl; intros.
-  - reflexivity.
-  - f_equal. assumption.
-Qed.
-
-Lemma string_list_bijection2 :
-  forall (l: list Ascii.ascii),
-    list_ascii_of_string (string_of_list_ascii l) = l.
-Proof.
-  induction l; simpl; intros.
-  - reflexivity.
-  - f_equal. eauto.
-Qed.
-
-Lemma string_cancel :
-  cancel string_of_list_ascii list_ascii_of_string.
-Proof.
-  unfold cancel.
-  intros. induction x; simpl; intros.
-  - reflexivity.
-  - f_equal. assumption.
-Qed.
 
 (*   Lemma ascii_list_inverse : *)
 (*     forall (l: list Ascii.ascii), *)
@@ -139,10 +94,10 @@ Module AsciiChoice.
    destruct x. reflexivity.
   Qed.
 
-  Print ssreflect.choice.
-  Print ssreflect.choice.Choice.
+  (* Print ssreflect.choice. *)
+  (* Print ssreflect.choice.Choice. *)
 
-  Print Choice.class_of.
+  (* Print Choice.class_of. *)
   (* Definition bool_choice_class := Choice.Class bool_eqMixin bool_choiceMixin. *)
   
 
@@ -173,7 +128,7 @@ Module AsciiChoice.
   Definition ascii_eqMixin := Equality.Mixin ascii_eqP.
   Definition ascii_choiceClass := @Choice.Class (Ascii.ascii) ascii_eqMixin ascii_has_choice.
   
-  Canonical ascii_choiceType := @Choice.Pack (Ascii.ascii) ascii_choiceClass.
+  Canonical Structure ascii_choiceType := @Choice.Pack (Ascii.ascii) ascii_choiceClass.
 
   Definition ascii_seq_choiceMixin := seq_choiceMixin (ascii_choiceType).
   Canonical ascii_eqType := @Equality.Pack Ascii.ascii ascii_eqMixin.
@@ -181,8 +136,8 @@ Module AsciiChoice.
 
   Definition ascii_seq_choiceClass := @Choice.Class (seq Ascii.ascii) ascii_seq_eqMixin ascii_seq_choiceMixin.
 
-  Canonical ascii_seq_choiceType := @Choice.Pack (seq Ascii.ascii) ascii_seq_choiceClass.
-
+  Canonical Structure ascii_seq_choiceType := @Choice.Pack (seq Ascii.ascii) ascii_seq_choiceClass.
+ 
   Definition bool_seq_pickle := Countable.pickle bool_seq_countable_mixin.
   Definition bool_seq_unpickle := Countable.unpickle bool_seq_countable_mixin.
                                                      
@@ -209,6 +164,53 @@ Module AsciiChoice.
   Definition ascii_count_class := Countable.Class ascii_choiceClass ascii_countable.
 
   Canonical ascii_countType := Countable.Pack ascii_count_class.
+
+    Fixpoint list_ascii_of_string (s: string): list Ascii.ascii :=
+    match s with
+    | EmptyString => nil
+    | String a s' =>
+        cons a (list_ascii_of_string s')
+    end.
+
+  Fixpoint string_of_list_ascii (l: list Ascii.ascii) : string :=
+    match l with
+    | nil => EmptyString
+    | cons a s => String a (string_of_list_ascii s)
+    end.
+  
+(*   Definition pickle c := *)
+(*     CodeSeq.code (List.map Ascii.nat_of_ascii (list_ascii_of_string c)). *)
+
+(*   Definition unpickle c := *)
+(*     string_of_list_ascii (List.map Ascii.ascii_of_nat (CodeSeq.decode c)). *)
+
+Lemma string_list_bijection1 :
+  forall (s: string),
+    string_of_list_ascii (list_ascii_of_string s) = s.
+Proof.
+  induction s; simpl; intros.
+  - reflexivity.
+  - f_equal. assumption.
+Qed.
+
+Lemma string_list_bijection2 :
+  forall (l: list Ascii.ascii),
+    list_ascii_of_string (string_of_list_ascii l) = l.
+Proof.
+  induction l; simpl; intros.
+  - reflexivity.
+  - f_equal. eauto.
+Qed.
+
+Lemma string_cancel :
+  cancel string_of_list_ascii list_ascii_of_string.
+Proof.
+  unfold cancel.
+  intros. induction x; simpl; intros.
+  - reflexivity.
+  - f_equal. assumption.
+Qed.
+
 
   Definition string_to_nat a := (Countable.pickle (seq_countMixin (nat_countType))) (List.map (Countable.pickle ascii_countable) (list_ascii_of_string a)).
   Definition nat_to_string a :=
@@ -241,39 +243,67 @@ Module AsciiChoice.
     rewrite <- H2. rewrite <- H2. rewrite string_list_bijection1. reflexivity.
   Qed.
 
-  
+  Print ascii_seq_choiceType.
+  (* Section CanHasChoice. *)
+    (* Set Printing All. *)
+    Print choiceType.
+    Print Choice.type.
+    Print Choice.class_of.
+    Print Choice.mixin_of.
+    Print CanChoiceMixin.
+    
+    
+    
+  (*   Variables (T: choiceType) (sT: Type) (f: sT -> T). *)
+  (*   Lemma PCanHasChoice f': *)
+  (*     pcancel f f' -> *)
+  (*     hasChoice sT. *)
+  (*   Proof. *)
+      
+              
 
-  Definition string_choiceMixin := @CanChoiceMixin (ascii_seq_choiceType) (string) string_of_list_ascii list_ascii_of_string string_cancel.
-  
-  Definition string_countMixin := Countable.Mixin string_pcancel.
-  Definition string_countClass := Countable.
+  (* Definition string_hasChoice := Choice. *)
+
+  (* Definition string_to_seq_ascii (s: string) := *)
+
+    
+    Definition string_choiceMixin := PcanChoiceMixin string_pcancel.
+
+    Definition string_eqMixin := eqtype.Equality.Mixin string_eqP.
+    Canonical string_eqType := @eqtype.Equality.Pack string string_eqMixin.
+    Definition string_choiceClass := Choice.Class string_eqMixin string_choiceMixin.
+    Canonical string_choiceType := Choice.Pack string_choiceClass.
+
   
 End AsciiChoice.
 
 Import AsciiChoice.
 
-
-
-
-
-Countable.ChoiceMixin
-
-Definition string_choiceMixin := @CanChoiceMixin (seq Ascii.ascii) (string) string_of_list_ascii list_ascii_of_string string_cancel.
-                                              
-
-Print ssreflect.choice.PcanChoiceMixin.
-
-
-Print Countable.mixin_of.
-
-Definition string_eqMixin := eqtype.Equality.Mixin string_eqP.
-Canonical string_eqType := @eqtype.Equality.Pack string string_eqMixin.
-
-Lemma symbols_seq_finite :
-  fintype.Finite.axiom symbols_seq.
+Lemma symbols_size :
+  size symbols_seq > 0.
 Proof.
-  unfold fintype.Finite.axiom.
-  move=> a.
-  unfold symbols_seq.
-  simpl.
+  simpl. econstructor.
+Qed.
+
+Definition symbols_seq_finType := adhoc_seq_sub_finType symbols_seq.
+
+(* Definition constants_seq := [:: "x"; "y"; "z"]. *)
+
+(* Lemma constants_size : *)
+(*   size constants_seq > 0. *)
+(* Proof. *)
+(*   simpl. *)
+(*   econstructor. *)
+(* Qed. *)
+
+(* Definition constype := adhoc_seq_sub_finType constants_seq. *)
+
+(* Require Import octalgo.datalogcert.syntax. *)
+(* Set Printing All. *)
+(* Eval compute in (@RawGAtom). *)
+(* Print Finite.sort. *)
+(* Print symtype. *)
+(* Eval compute in (syntax.RawGAtom "R" [:: "x"]). *)
+
+  
   

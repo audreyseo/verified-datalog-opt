@@ -12,6 +12,8 @@ DATALOG=$PROJ_DIR/datalogo
 
 cd $DATALOG
 
+make
+
 make install
 
 cd $PROJ_DIR

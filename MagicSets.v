@@ -1,4 +1,4 @@
-From octalgo Require Import syntax.
+(*From octalgo Require Import syntax.
 Print of_constant.
 Print raw_gatom.
 
@@ -307,3 +307,4 @@ Definition symbols_seq_finType := adhoc_seq_sub_finType symbols_seq.
 
   
   
+*)

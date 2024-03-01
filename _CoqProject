@@ -2,3 +2,7 @@
 ./OrderedSemiring.v
 ./Datalogo.v
 ./MagicSets.v
+./OrdersFunctor.v
+./DatalogProps.v
+./StringOrders.v
+./RelOrdered.v

@@ -100,4 +100,51 @@ Module String_OTF <: Orders.OrderedTypeFull.
           unfold OrderedTypeEx.String_as_OT.cmp in H3. rewrite H3. reflexivity.
     Qed.
   End StringLe.
+
+  Lemma ascii_compare_eq :
+    forall (a: Ascii.ascii),
+      Ascii_as_OT.compare a a = Eq.
+  Proof.
+    intros.
+    destruct a. destruct b, b0, b1, b2, b3, b4, b5, b6; simpl; reflexivity.
+  Defined.
+  
+
+  Lemma ordered_type_string_lt :
+    forall (x y: string),
+      OrderedTypeEx.String_as_OT.lt x y <->
+        String_as_OT.lt x y.
+  Proof.
+    induction x; intros; split; intros.
+    - unfold String_as_OT.lt. simpl. inversion H. reflexivity.
+    - unfold String_as_OT.lt in H. unfold OrderedTypeEx.String_as_OT.lt.
+      destruct y; simpl in *.
+      inversion H. econstructor.
+    - inversion H; subst.
+      + unfold String_as_OT.lt. simpl. rewrite ascii_compare_eq.
+        eapply IHx. eauto.
+      + unfold String_as_OT.lt. simpl.
+        (* rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare. *)
+        eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat in H3.
+        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in *.
+        rewrite H3. reflexivity.
+    - destruct y. unfold String_as_OT.lt in H. simpl in H. inversion H.
+      destruct (Ascii.compare a a0) eqn:C.
+      + eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in C. subst a.
+        
+        eapply OrderedTypeEx.String_as_OT.lts_tail. eapply IHx.
+        unfold String_as_OT.lt in *. simpl in H.
+        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in H.
+        rewrite ascii_compare_eq in H.
+        rewrite H. reflexivity.
+      + econstructor. eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat.
+        eassumption.
+      + unfold String_as_OT.lt in H. simpl in H.
+        destruct (Ascii_as_OT.compare a a0) eqn:C'; subst.
+        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'.
+        rewrite C' in C. inversion C.
+        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'. congruence.
+        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'.
+        inversion H.
+  Defined.
 End String_OTF.

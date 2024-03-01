@@ -3,7 +3,7 @@ From Coq Require Import FMapInterface List Orders.
 
 
 
-Module Orders_to_OrderedType(OTF: OrderedTypeFull) <: OrderedType.OrderedType.
+Module Orders_to_OrderedType(OTF: UsualOrderedTypeFull) <: OrderedType.OrderedType.
   Import OTF.
   (* Print OrderedTypeFull. *)
   (* Module Type
@@ -107,7 +107,7 @@ End Orders_to_OrderedType.
 
     
 
-Module OtherOTFFacts(OTF: OrderedTypeFull).
+Module OtherOTFFacts(OTF: UsualOrderedTypeFull).
   Import OTF.
   Module OTOTF := Orders_to_OrderedType(OTF).
   Import OTOTF.
@@ -213,6 +213,7 @@ Module OtherOTFFacts(OTF: OrderedTypeFull).
     destruct H2. specialize (H5 H4).
     eapply otf_lt_not_sym; eassumption.
   Defined.
+
   
 
   Lemma otf_gt_implies_lt :
@@ -331,6 +332,63 @@ Module OtherOTFFacts(OTF: OrderedTypeFull).
     - pose proof (otf_lt_not_sym _ _ H5 H8). inversion H9.
   Defined.
 
+  Lemma otf_lt_not_refl :
+    forall (x: OTF.t),
+      ~ (OTF.lt x x).
+  Proof.
+    pose proof OTF.lt_strorder.
+    inversion H. intros. eapply StrictOrder_Irreflexive.
+  Defined.
+
+
+  Lemma otf_eq_lt_false' :
+    forall (x y: OTF.t),
+      OTF.eq x y ->
+      OTF.lt x y ->
+      False.
+  Proof.
+    intros. pose proof (OTF.compare_spec).
+    specialize (H1 x y).
+    destruct (OTF.compare x y) eqn:C; inversion H1; subst.
+    - eapply otf_lt_not_refl in H0. 
+      contradiction.
+    - eapply eq_sym in H.
+      pose proof (otf_eq_lt_false _ _ H C). contradiction.
+    - eapply otf_gt_implies_lt in C. pose proof (otf_eq_lt_false _ _ H C). contradiction.
+  Defined.
+  
+  Lemma otf_eq_lt' :
+    forall (a b c: OTF.t),
+      OTF.eq a b ->
+      OTF.lt b c ->
+      OTF.lt a c.
+  Proof.
+    pose proof (OTF.compare_spec).
+    pose proof (H' := H).
+    intros.
+    specialize (H a b). specialize (H' b c).
+    destruct (OTF.compare a b) eqn:AB; destruct (OTF.compare b c) eqn:BC; inversion H; inversion H'; subst.
+    - eapply otf_lt_not_refl in H1. contradiction.
+    - eassumption.
+    - pose proof (otf_lt_not_sym _ _ H1 H3). contradiction.
+    - eapply otf_lt_not_refl in H1. contradiction.
+    - pose proof otf_eq_lt_false.
+      eapply eq_sym in H0. specialize (H4 _ _ H0 AB).
+      contradiction.
+    - pose proof (otf_eq_lt_false).
+      eapply eq_sym in H0. specialize (H4 _ _ H0 AB).
+      inversion H4.
+    - eapply otf_gt_implies_lt in AB.
+      epose proof (otf_eq_lt_false _ _ H0 AB).
+      contradiction.
+    - eapply otf_gt_implies_lt in AB.
+      epose proof (otf_eq_lt_false _ _ H0 AB).
+      contradiction.
+    - eapply otf_gt_implies_lt in AB.
+      epose proof (otf_eq_lt_false _ _ H0 AB).
+      contradiction.
+  Defined.
+
   Lemma otf_eq_lt_right :
     forall (a b c: OTF.t),
       OTF.compare a b = Lt ->
@@ -359,6 +417,31 @@ Module OtherOTFFacts(OTF: OrderedTypeFull).
       pose proof (OTF.compare_spec c a). rewrite C' in H7.
       inversion H7. pose proof (otf_lt_not_sym _ _ H4 H8). inversion H9.
   Defined.
+
+  Lemma otf_eq_lt_right' :
+    forall (a b c: OTF.t),
+      OTF.lt a b ->
+      OTF.eq b c ->
+      OTF.lt a c.
+  Proof.
+    pose proof (OTF.compare_spec).
+    intros.
+    pose proof (H' := H b c).
+    specialize (H a b).
+    destruct (OTF.compare a b) eqn:E1, (OTF.compare b c) eqn:E2; inversion H; inversion H'; subst;
+      match goal with
+      | [ H: OTF.lt ?x ?x |- _ ] =>
+          eapply otf_lt_not_refl in H; contradiction
+      | [ |- _ ] => idtac
+      end; eauto.
+    - pose proof (otf_eq_lt_false' _ _ H1 H3).
+      contradiction.
+    - eapply eq_sym in H1. pose proof (otf_eq_lt_false' _ _ H1 H3).
+      contradiction.
+    - pose proof (otf_lt_not_sym _ _ H0 H2). contradiction.
+    - eapply otf_gt_implies_lt in E2. pose proof (otf_eq_lt_false _ _ H1 E2).
+      contradiction.
+  Defined.
     
   Lemma otf_compare_eq_eq :
     forall (x y: OTF.t),
@@ -372,7 +455,7 @@ Module OtherOTFFacts(OTF: OrderedTypeFull).
   Defined.
 End OtherOTFFacts.
 
-Module OTF_to_OT_Facts(OTF: OrderedTypeFull).
+Module OTF_to_OT_Facts(OTF: UsualOrderedTypeFull).
   Module OT := Orders_to_OrderedType(OTF).
   Module OtherFacts := OtherOTFFacts(OTF).
   Import OtherFacts.
@@ -449,7 +532,7 @@ End OTF_to_OT_Facts.
 
 
 
-Module List_as_OTF(OTF: OrderedTypeFull) <: OrderedTypeFull.
+Module List_as_OTF(OTF: UsualOrderedTypeFull) <: UsualOrderedTypeFull.
   Print OrderedTypeFull.
   Module OTOTF := Orders_to_OrderedType(OTF).
   Import OTOTF.
@@ -458,37 +541,23 @@ Module List_as_OTF(OTF: OrderedTypeFull) <: OrderedTypeFull.
 
   Definition t := list OTF.t.
   #[global]
-  Hint Transparent t : ordered_type.
-  Fixpoint eq (l1 l2: t) : Prop :=
-    match l1 with
-    | nil =>
-        nil = l2
-    | cons hd tl =>
-        match l2 with
-        | cons hd' tl' =>
-            OTF.eq hd hd' /\ eq tl tl'
-        | _ => False
-        end
-    end.
-  Lemma eq_equiv : Equivalence eq.
-  Proof.
-    econstructor; unfold Reflexive, Symmetric, Transitive; induction x; intros; simpl.
-    - reflexivity.
-    - split; [ eapply eq_refl | ]. eassumption.
-    - simpl in H. subst. reflexivity.
-    - simpl in H. destruct y. inversion H.
-      simpl. destruct H. split.
-      + eapply eq_sym. eauto.
-      + eauto.
-    - simpl in H. subst. simpl in H0. subst.
-      reflexivity.
-    - simpl in H. destruct y. inversion H.
-      destruct H. simpl in H0. destruct z.
-      inversion H0. destruct H0.
-      split.
-      + eapply eq_trans; eauto.
-      + eauto.
-  Defined.
+   Hint Transparent t : ordered_type.
+
+  Definition eq (l1 l2: t) : Prop := l1 = l2.
+  #[global]
+  Hint Unfold eq : ordered_type.
+  (* Fixpoint eq (l1 l2: t) : Prop := *)
+  (*   match l1 with *)
+  (*   | nil => *)
+  (*       nil = l2 *)
+  (*   | cons hd tl => *)
+  (*       match l2 with *)
+  (*       | cons hd' tl' => *)
+  (*           OTF.eq hd hd' /\ eq tl tl' *)
+  (*       | _ => False *)
+  (*       end *)
+  (*   end. *)
+  Definition eq_equiv : Equivalence eq := eq_equivalence.
 
   Fixpoint compare (l1 l2: t) :=
     match l1 with
@@ -541,52 +610,9 @@ Module List_as_OTF(OTF: OrderedTypeFull) <: OrderedTypeFull.
   
   Lemma lt_compat : Proper (eq ==> eq ==> iff) lt.
   Proof.
-    unfold Proper, iff, respectful.
+    unfold Proper, iff, respectful, eq.
     intros.
-    split; intros.
-    - revert H1 H0. revert x0 y0. revert H. revert y. induction x; intros.
-      + simpl in H. subst. destruct x0; inversion H1.
-        simpl in H0. destruct y0. inversion H0. econstructor.
-      + destruct y. inversion H. destruct y0.
-        simpl in H1. destruct x0. inversion H1. simpl in H0. inversion H0.
-        simpl in H. destruct H.
-        destruct x0; inversion H0.
-        unfold lt in *. simpl. simpl in *.
-        destruct H0. clear H3 H4.
-        destruct (OTF.compare a t2) eqn:C.
-        * eapply otf_compare_eq_eq in C.
-          pose proof (eq_trans _ _ _ C H0).
-          eapply eq_sym in H. epose proof (eq_trans _ _ _ H H3).
-          eapply otf_eq_compare_eq in H4. rewrite H4. eauto.
-        * pose proof (otf_eq_lt).
-          pose proof (otf_eq_lt_right).
-          eapply otf_eq_compare_eq in H0.
-          specialize (H4 _ _ _ C H0).
-          eapply otf_eq_compare_eq in H. eapply otf_compare_sym in H.
-          specialize (H3 _ _ _ H H4). rewrite H3. reflexivity.
-        * inversion H1.
-    -  revert H1 H0. revert x0 y0. revert H. revert y. induction x; intros.
-       + simpl in H. subst. simpl in H1. destruct y0. inversion H1.
-         destruct x0. inversion H0. econstructor.
-       + destruct x0. inversion H0. subst. destruct y. inversion H1.
-         inversion H1.
-         simpl.
-         simpl in H. destruct y; inversion H. clear H.
-         unfold lt in *. simpl in H0. destruct y0; inversion H0.
-         clear H0. simpl in H1.
-         destruct (OTF.compare t1 t2) eqn:C.
-         * simpl. eapply otf_compare_eq_eq in C.
-           epose proof (eq_trans _ _ _ H2 C).
-           eapply eq_sym in H. epose proof (eq_trans _ _ _ H0 H).
-           eapply otf_eq_compare_eq in H5. rewrite H5. eapply IHx; eauto.
-         * pose proof otf_eq_lt.
-           eapply otf_eq_compare_eq in H2. specialize (H0 _ _ _ H2 C).
-           eapply eq_sym in H.
-           eapply otf_eq_compare_eq in H.
-           pose proof (otf_eq_lt_right).
-           specialize (H5 _ _ _ H0 H).
-           simpl. rewrite H5. reflexivity.
-         * inversion H1.
+    split; intros; subst; eassumption.
   Defined.
 
   Lemma lt_strorder : StrictOrder lt.
@@ -638,6 +664,7 @@ Module List_as_OTF(OTF: OrderedTypeFull) <: OrderedTypeFull.
    Lemma compare_spec :
      forall x y : t, CompareSpec (eq x y) (lt x y) (lt y x) (compare x y).
   Proof.
+    unfold eq.
     induction x; intros.
     - simpl. destruct y; simpl.
       + econstructor. reflexivity.
@@ -646,11 +673,8 @@ Module List_as_OTF(OTF: OrderedTypeFull) <: OrderedTypeFull.
       destruct (OTF.compare a t0) eqn:C.
       + specialize (IHx y).
         inversion IHx; econstructor.
-        * split; eauto.
-          pose proof (OTF.compare_spec).
-          specialize (H1 a t0).
-          rewrite C in H1. inversion H1.
-          assumption.
+        * eapply otf_compare_eq_eq in C. f_equal.
+          unfold OTF.eq in *. eassumption. eassumption.
         * unfold lt. simpl.
 
           rewrite C. congruence.
@@ -671,9 +695,10 @@ Module List_as_OTF(OTF: OrderedTypeFull) <: OrderedTypeFull.
       + simpl.
         destruct (IHx y).
         * destruct (OTF.eq_dec a t0).
-          left; split; eassumption.
-          right. unfold not.  intros. destruct H. eapply n. eassumption.
-        * right. unfold not. intros. destruct H. eapply n in H0. eassumption.
+          subst.
+          unfold eq in *. subst. left. reflexivity.
+          right. congruence.
+        * unfold eq in *. right; congruence. 
   Defined.
   Definition le (l1 l2: t) :=
     lt l1 l2 \/ eq l1 l2.
@@ -684,15 +709,114 @@ Module List_as_OTF(OTF: OrderedTypeFull) <: OrderedTypeFull.
   Defined.
 End List_as_OTF.
 
-Module List_as_OT(OT: OrderedTypeFull) <: OrderedType.OrderedType.
+Module List_as_OT(OT: UsualOrderedTypeFull) <: OrderedType.OrderedType.
   Module OTF := List_as_OTF(OT).
   Include Orders_to_OrderedType(OTF).
 End List_as_OT.
 
 Require Import OrdersEx.
+Require Import EqualitiesFacts.
+Module PairOrderedType(O1 O2: UsualOrderedTypeFull) <: OrderedType.
+  Include PairUsualDecidableType O1 O2.
+  Module Other1 := OtherOTFFacts O1.
+  Module Other2 := OtherOTFFacts O2.
 
-Module Pair_as_OTF(O1 O2: OrderedTypeFull) <: OrderedTypeFull.
+ Definition lt (p1 p2: t) :=
+   O1.lt (fst p1) (fst p2) \/ (O1.eq (fst p1) (fst p2) /\ O2.lt (snd p1) (snd p2)).
+   (* (relation_disjunction (O1.lt @@1) (O1.eq * O2.lt))%signature. *)
+
+#[global]
+ Instance lt_strorder : StrictOrder lt.
+ Proof.
+   econstructor.
+   - unfold Irreflexive. unfold Reflexive. unfold complement. intros.
+     unfold lt in H.
+     destruct H.
+     + pose proof O1.lt_strorder.
+       inversion H0. eapply StrictOrder_Irreflexive in H. eassumption.
+     + destruct H. pose proof O2.lt_strorder.
+       inversion H1. eapply StrictOrder_Irreflexive in H0. inversion H0.
+   - unfold Transitive. unfold lt. intros.
+     destruct x, y, z; simpl in *.
+     pose proof O1.lt_strorder. inversion H1.
+     pose proof O2.lt_strorder. inversion H2.
+     destruct H, H0.
+     + left. eapply StrictOrder_Transitive; eauto.
+     + destruct H0.
+       pose proof (Other1.otf_eq_lt_right' _ _ _ H H0).
+       left. eassumption.
+     + destruct H.
+       pose proof (Other1.otf_eq_lt' _ _ _ H H0). left. eassumption.
+     + destruct H. destruct H0.
+       unfold O1.eq in *. subst. right.
+       split; eauto.
+ Defined.
+                             
+
+#[global]
+ Instance lt_compat : Proper (eq==>eq==>iff) lt.
+  Proof.
+    unfold Proper, eq, respectful, iff, lt.
+    intros. split; intros; subst.
+    - destruct H1.
+      + left. assumption.
+      + right. assumption.
+    - eassumption.
+  Defined.
+
+ Definition compare x y :=
+  match O1.compare (fst x) (fst y) with
+   | Eq => O2.compare (snd x) (snd y)
+   | Lt => Lt
+   | Gt => Gt
+  end.
+
+  Lemma compare_spec : forall x y, CompSpec eq lt x y (compare x y).
+  Proof.
+    unfold CompSpec. intros.
+    pose proof (O1.compare_spec).
+    pose proof (O2.compare_spec).
+    destruct (compare x y) eqn:C; unfold compare in *.
+    - econstructor. destruct x. destruct y.
+      specialize (H t0 t2). specialize (H0 t1 t3).
+      simpl in *.
+      destruct (O1.compare t0 t2) eqn:E1.
+      + rewrite C in *. inversion H. inversion H0. unfold eq. congruence.
+      + inversion C.
+      + inversion C.
+    - destruct x. destruct y. econstructor. simpl in *.
+      specialize (H t0 t2). specialize (H0 t1 t3).
+      destruct (O1.compare t0 t2) eqn:E1.
+      + rewrite C in *. inversion H. inversion H0. unfold lt. simpl. right; split; eauto.
+      + destruct (O2.compare t1 t3) eqn:E2.
+        * inversion H0. inversion H. unfold lt.
+          simpl. left. assumption.
+        * inversion H. inversion H0. unfold lt. left. simpl. assumption.
+        * inversion H. unfold lt. left. simpl. eauto.
+      + inversion C.
+    - destruct x, y. simpl in *.
+      specialize (H t0 t2). specialize (H0 t1 t3).
+      destruct (O1.compare t0 t2) eqn:E1; try rewrite C in *.
+      + inversion H. inversion H0. econstructor.
+        right. simpl. split; eauto; congruence.
+      + inversion C.
+      + destruct (O2.compare t1 t3) eqn:E2; econstructor.
+        * unfold lt. simpl. left. inversion H. eauto.
+        * inversion H. left. eauto.
+        * inversion H. left. eauto.
+  Defined.
+        
+      
+        
+      
+
+End PairOrderedType.
+
+
+Module Pair_as_OTF(O1 O2: UsualOrderedTypeFull) <: UsualOrderedTypeFull.
   Include PairOrderedType O1 O2.
+
+  (* Definition eq (p1 p2: t) := p1 = p2. *)
 
   Definition le (p1 p2: t) :=
     lt p1 p2 \/ eq p1 p2.

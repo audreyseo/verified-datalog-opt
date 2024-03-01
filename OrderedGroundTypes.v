@@ -7,10 +7,13 @@ Local Open Scope list_scope.
 Local Open Scope nat_scope.
 
 
-Module Ground_Types_as_OTF <: Orders.OrderedTypeFull.
+Module Ground_Types_as_OTF <: Orders.UsualOrderedTypeFull.
+  Import String_OTF.
+  Module MoreString := OtherOTFFacts(String_OTF).
   Definition t := ground_types.
   Definition eq := @Logic.eq t.
   Definition eq_equiv : RelationClasses.Equivalence eq := RelationClasses.eq_equivalence.
+  
 
   Definition lt (g1 g2: ground_types) :=
     match g1, g2 with
@@ -109,13 +112,6 @@ Module Ground_Types_as_OTF <: Orders.OrderedTypeFull.
       split; intros; eassumption.
   Defined.
 
-  Lemma ascii_compare_eq :
-    forall (a: Ascii.ascii),
-      Ascii_as_OT.compare a a = Eq.
-  Proof.
-    intros.
-    destruct a. destruct b, b0, b1, b2, b3, b4, b5, b6; simpl; reflexivity.
-  Defined.
   
 
   Lemma compare_spec :
@@ -141,8 +137,32 @@ Module Ground_Types_as_OTF <: Orders.OrderedTypeFull.
         rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare.
         rewrite <- String_OTF.ascii_compare_same_as_ascii_ot_compare.
         rewrite ascii_compare_eq.
-        admit.
-  Admitted.
+        inversion H. simpl. reflexivity.
+        eapply ordered_type_string_lt in H2.
+        simpl.
+        rewrite ascii_compare_eq.
+        pose proof (String_as_OT.compare_spec s3 s4).
+        destruct (String_as_OT.compare s3 s4).
+        inversion H5.
+        pose proof (MoreString.otf_eq_lt_false').
+        specialize (H7 _ _ H6).
+        specialize (H7 H2). contradiction.
+        reflexivity.
+        inversion H5.
+        pose proof (MoreString.otf_lt_not_sym _ _ H2 H6).
+        contradiction.
+        simpl. rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare.
+        eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat in H2.
+        unfold OrderedTypeEx.Ascii_as_OT.cmp in H2. rewrite H2.
+        reflexivity.
+        unfold String_as_OT.lt. simpl.
+        eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat in H.
+        unfold OrderedTypeEx.Ascii_as_OT.cmp in H.
+        rewrite ascii_compare_same_as_ascii_ot_compare. rewrite H. reflexivity.
+      + unfold String_as_OT.lt.
+        eapply MoreString.otf_gt_implies_lt. eassumption.
+  Defined.
+
   
   Lemma eq_dec :
     forall (x y: t),
@@ -205,43 +225,7 @@ Module Ground_Types_as_OTF <: Orders.OrderedTypeFull.
     intros. inversion H. inversion H0. reflexivity.
   Defined.
 
-  Lemma ordered_type_string_lt :
-    forall (x y: string),
-      OrderedTypeEx.String_as_OT.lt x y <->
-        String_as_OT.lt x y.
-  Proof.
-    induction x; intros; split; intros.
-    - unfold String_as_OT.lt. simpl. inversion H. reflexivity.
-    - unfold String_as_OT.lt in H. unfold OrderedTypeEx.String_as_OT.lt.
-      destruct y; simpl in *.
-      inversion H. econstructor.
-    - inversion H; subst.
-      + unfold String_as_OT.lt. simpl. rewrite ascii_compare_eq.
-        eapply IHx. eauto.
-      + unfold String_as_OT.lt. simpl.
-        (* rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare. *)
-        eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat in H3.
-        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in *.
-        rewrite H3. reflexivity.
-    - destruct y. unfold String_as_OT.lt in H. simpl in H. inversion H.
-      destruct (Ascii.compare a a0) eqn:C.
-      + eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in C. subst a.
-        
-        eapply OrderedTypeEx.String_as_OT.lts_tail. eapply IHx.
-        unfold String_as_OT.lt in *. simpl in H.
-        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in H.
-        rewrite ascii_compare_eq in H.
-        rewrite H. reflexivity.
-      + econstructor. eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat.
-        eassumption.
-      + unfold String_as_OT.lt in H. simpl in H.
-        destruct (Ascii_as_OT.compare a a0) eqn:C'; subst.
-        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'.
-        rewrite C' in C. inversion C.
-        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'. congruence.
-        rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'.
-        inversion H.
-  Defined.
+  
   
   
   
@@ -323,7 +307,7 @@ Module gset.
     destruct H.
     destruct X.
     - eapply H in i. left. assumption.
-    - right. unfold not; intros. eapply H0 in H1. unfold String_GT_OT.eq in n. congruence.
+    - right. unfold not; intros. eapply H0 in H1. unfold String_GT_OT.eq in n. eapply n in H1. contradiction.
   Defined.
 
   (* Lemma In_fold_spec : *)

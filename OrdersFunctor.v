@@ -688,3 +688,35 @@ Module List_as_OT(OT: OrderedTypeFull) <: OrderedType.OrderedType.
   Module OTF := List_as_OTF(OT).
   Include Orders_to_OrderedType(OTF).
 End List_as_OT.
+
+Require Import OrdersEx.
+
+Module Pair_as_OTF(O1 O2: OrderedTypeFull) <: OrderedTypeFull.
+  Include PairOrderedType O1 O2.
+
+  Definition le (p1 p2: t) :=
+    lt p1 p2 \/ eq p1 p2.
+    (* match p1, p2 with *)
+    (* | (a1, b1), (a2, b2) => *)
+        (* O1.le a1 a2 \/ (O1.eq a1 a2 /\ O2.le b1 b2) *)
+    (* end. *)
+
+
+  Definition le_lteq : forall x y, le x y <-> lt x y \/ eq x y.
+  Proof.
+    intros.
+    pose proof (O1.le_lteq).
+    pose proof (O2.le_lteq).
+    unfold le. unfold lt. unfold eq. unfold relation_disjunction. unfold RelationPairs.RelProd. unfold RelationPairs.RelCompFun. unfold relation_conjunction. unfold predicate_intersection. unfold predicate_union. unfold pointwise_extension.
+    split; intros; eauto.
+  Defined.
+
+  
+
+   
+                                                   
+  
+
+End Pair_as_OTF.
+
+

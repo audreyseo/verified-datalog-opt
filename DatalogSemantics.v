@@ -1,6 +1,6 @@
-From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList MSetWeakList.
+From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -13,347 +13,211 @@ Module RelSemantics.
 
   
 
-    Module Ground_Types_as_OTF <: Orders.OrderedTypeFull.
-      Definition t := ground_types.
-      Definition eq := @Logic.eq t.
-      Definition eq_equiv : RelationClasses.Equivalence eq := RelationClasses.eq_equivalence.
-
-      Definition lt (g1 g2: ground_types) :=
-        match g1, g2 with
-        | NAT n1, NAT n2 => Nat.lt n1 n2
-        | STR s1, STR s2 =>
-            String_as_OT.lt s1 s2
-        | NAT _, STR _ => True
-        | STR _, NAT _ => False
-        end.
-
-      Definition le (g1 g2: ground_types) :=
-        match g1, g2 with
-        | NAT n1, NAT n2 => Nat.le n1 n2
-        | STR s1, STR s2 =>
-            String_OTF.le s1 s2
-        | NAT _, STR _ => True
-        | STR _, NAT _ => False
-        end.
-
-      (* Lemma compare : *)
-      (*   forall (g1 g2: t), *)
-      (*     OrderedType.Compare lt eq g1 g2. *)
-
-      Definition compare (g1 g2: ground_types) :=
-        match g1, g2 with
-        | NAT n1, NAT n2 => Nat.compare n1 n2
-        | STR s1, STR s2 => String_as_OT.compare s1 s2
-        | NAT _, STR _ => Lt
-        | STR _, NAT _ => Gt
-        end.
-
-      
-
-      #[global]
-       Instance lt_strorder : RelationClasses.StrictOrder lt.
-      Proof.
-        econstructor.
-        - unfold RelationClasses.Irreflexive.
-          unfold RelationClasses.Reflexive.
-          unfold RelationClasses.complement.
-          destruct x; intros.
-          + simpl in H. eapply Nat.lt_irrefl in H. eassumption.
-          + simpl in H. pose proof String_as_OT.lt_strorder.
-            inversion H0. unfold RelationClasses.Irreflexive in StrictOrder_Irreflexive. unfold RelationClasses.Reflexive in StrictOrder_Irreflexive. unfold RelationClasses.complement in StrictOrder_Irreflexive. eapply StrictOrder_Irreflexive in H. eauto.
-        - unfold RelationClasses.Transitive.
-          intros.
-          destruct x, z.
-          + simpl in H. destruct y; simpl in H; subst.
-            eapply Nat.lt_trans. eassumption. eassumption.
-            inversion H0.
-          + destruct y; simpl in H, H0. reflexivity.
-            reflexivity.
-          + destruct y; simpl in H, H0; contradiction.
-          + destruct y; simpl in H, H0; try congruence; try contradiction.
-            simpl.
-            enough (forall s2 s3, String_as_OT.lt s2 s3 <-> OrderedTypeEx.String_as_OT.lt s2 s3).
-            rewrite H1. 
-            eapply OrderedTypeEx.String_as_OT.lt_trans.
-            rewrite <- H1. eassumption. rewrite <- H1. eassumption.
-            unfold String_as_OT.lt. unfold OrderedTypeEx.String_as_OT.lt.
-            induction s2; intros.
-            * simpl. split; intros.
-              destruct s3. inversion H1.
-              econstructor.
-              inversion H1. reflexivity.
-            * simpl. split; intros.
-              -- destruct s3. inversion H1.
-                 destruct (Ascii_as_OT.compare a a0) eqn:A.
-                 ++ eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in A. subst a.
-                    eapply OrderedTypeEx.String_as_OT.lts_tail.
-                    eapply IHs2. eauto.
-                 ++ econstructor. eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat. eassumption.
-                 ++ inversion H1.
-              -- destruct s3; intros. inversion H1.
-                 inversion H1; subst.
-                 ++ assert (a0 = a0) by reflexivity.
-                    eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in H2.
-                    rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in H2. rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare. rewrite H2.
-                    eapply IHs2. eassumption.
-                 ++ eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat in H3.
-                    rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in *.
-                    rewrite H3. reflexivity.
-      Defined.
-
-      #[global]
-      Instance lt_compat : Morphisms.Proper (Morphisms.respectful eq (Morphisms.respectful eq iff)) lt.
-      Proof.
-        unfold Morphisms.Proper. unfold Morphisms.respectful. unfold iff.
-        induction x; intros.
-        - inversion H; subst.
-          split; intros.
-          + inversion H0. subst x.
-            assumption.
-          + inversion H0. subst x. eassumption.
-        - inversion H; subst. inversion H0; subst.
-          split; intros; eassumption.
-      Defined.
-
-      Lemma ascii_compare_eq :
-        forall (a: Ascii.ascii),
-          Ascii_as_OT.compare a a = Eq.
-      Proof.
-        intros.
-        destruct a. destruct b, b0, b1, b2, b3, b4, b5, b6; simpl; reflexivity.
-      Defined.
-       
-
-      Lemma compare_spec :
-        forall (x y: t),
-          CompSpec eq lt x y (compare x y).
-      Proof.
-        induction x; intros; unfold CompSpec; simpl.
-        - destruct y.
-          + simpl.
-            destruct (n ?= n0) eqn:C; econstructor.
-            * eapply Nat.compare_eq in C.
-              rewrite C. reflexivity.
-            * unfold Nat.lt. eapply nat_compare_Lt_lt in C. assumption.
-            * eapply nat_compare_Gt_gt in C. unfold gt in C. assumption.
-          + econstructor. econstructor.
-        - destruct y; simpl in *. econstructor. econstructor.
-          destruct (String_as_OT.compare s s0) eqn:C; econstructor.
-          + eapply OrderedTypeEx.String_as_OT.cmp_eq in C. subst. reflexivity.
-          + eapply OrderedTypeEx.String_as_OT.cmp_lt in C.
-            unfold OrderedTypeEx.String_as_OT.lt in C.
-            inversion C. subst. econstructor.
-            unfold String_as_OT.lt. simpl.
-            rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare.
-            rewrite <- String_OTF.ascii_compare_same_as_ascii_ot_compare.
-            rewrite ascii_compare_eq.
-            admit.
-      Admitted.
-            
-      Lemma eq_dec :
-        forall (x y: t),
-          { x = y} + { x <> y}.
-      Proof.
-        destruct x, y; try (right; congruence).
-        - destruct (Nat.eq_dec n n0) eqn:EQ; try (right; congruence); left; congruence.
-        - destruct (String_as_OT.eq_dec s s0) eqn:EQ; try (right; congruence); left; congruence.
-      Defined.
-          
-
-      Lemma le_lteq :
-        forall x y,
-          le x y <-> lt x y \/ eq x y.
-      Proof.
-        destruct x, y; split; intros.
-        - simpl in H.
-          destruct (Nat.le_lteq n n0). eapply H0 in H. destruct H; [ | subst ].
-          + left. eapply H.
-          + right. reflexivity.
-        - simpl in H. eapply (Nat.le_lteq).
-          destruct H.
-          + left. eapply H.
-          + right. inversion H. reflexivity.
-        - simpl in H. left. simpl. assumption.
-        - simpl. econstructor.
-        - simpl. simpl in H. left. eauto.
-        - simpl in H. destruct H; inversion H.
-        - simpl in H.
-          eapply String_OTF.le_lteq in H. destruct H.
-          + left. eapply H.
-          + right. inversion H. reflexivity.
-        - simpl. simpl in H. destruct H.
-          + eapply String_OTF.le_lteq. left. assumption.
-          + eapply String_OTF.le_lteq. right. inversion H. reflexivity.
-      Defined.
-            
-      Lemma eq_refl :
-        forall x,
-          eq x x.
-      Proof.
-        intros. reflexivity.
-      Defined.
-
-      Lemma eq_sym :
-        forall x y,
-          eq x y ->
-          eq y x.
-      Proof.
-        intros.
-        inversion H. reflexivity.
-      Defined.
-
-      Lemma eq_trans :
-        forall x y z,
-          eq x y ->
-          eq y z ->
-          eq x z.
-      Proof.
-        intros. inversion H. inversion H0. reflexivity.
-      Defined.
-
-      Lemma ordered_type_string_lt :
-        forall (x y: string),
-          OrderedTypeEx.String_as_OT.lt x y <->
-            String_as_OT.lt x y.
-      Proof.
-        induction x; intros; split; intros.
-        - unfold String_as_OT.lt. simpl. inversion H. reflexivity.
-        - unfold String_as_OT.lt in H. unfold OrderedTypeEx.String_as_OT.lt.
-          destruct y; simpl in *.
-          inversion H. econstructor.
-        - inversion H; subst.
-          + unfold String_as_OT.lt. simpl. rewrite ascii_compare_eq.
-            eapply IHx. eauto.
-          + unfold String_as_OT.lt. simpl.
-            (* rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare. *)
-            eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat in H3.
-            rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in *.
-            rewrite H3. reflexivity.
-        - destruct y. unfold String_as_OT.lt in H. simpl in H. inversion H.
-          destruct (Ascii.compare a a0) eqn:C.
-          + eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in C. subst a.
-            
-            eapply OrderedTypeEx.String_as_OT.lts_tail. eapply IHx.
-            unfold String_as_OT.lt in *. simpl in H.
-            rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in H.
-            rewrite ascii_compare_eq in H.
-            rewrite H. reflexivity.
-          + econstructor. eapply OrderedTypeEx.Ascii_as_OT.cmp_lt_nat.
-            eassumption.
-          + unfold String_as_OT.lt in H. simpl in H.
-            destruct (Ascii_as_OT.compare a a0) eqn:C'; subst.
-            rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'.
-            rewrite C' in C. inversion C.
-            rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'. congruence.
-            rewrite String_OTF.ascii_compare_same_as_ascii_ot_compare in C'.
-            inversion H.
-      Defined.
-            
-          
-          
-      Lemma lt_trans :
-        forall x y z,
-          lt x y ->
-          lt y z ->
-          lt x z.
-      Proof.
-        intros.  destruct x, y, z; simpl in *; try eassumption.
-        - eapply Nat.lt_trans; eassumption.
-        - inversion H0.
-        - inversion H.
-        - eapply ordered_type_string_lt.
-          eapply ordered_type_string_lt in H, H0.
-          eapply OrderedTypeEx.String_as_OT.lt_trans; eassumption.
-      Defined.
-
-      Lemma lt_not_eq :
-        forall x y,
-          lt x y ->
-          x <> y.
-      Proof.
-        destruct x; intros.
-        destruct y; simpl in H; unfold lt in H.
-        unfold not. intros. inversion H0.
-        eapply Nat.lt_neq in H. congruence.
-        unfold not. intros. inversion H0.
-        destruct y. simpl in H. inversion H.
-        simpl in H. unfold not. intros.
-        eapply ordered_type_string_lt in H.
-        eapply OrderedTypeEx.String_as_OT.lt_not_eq in H.
-        unfold not in H. inversion H0.
-        eapply H in H2. congruence.
-      Defined.
-        
-                    
-      
-    End Ground_Types_as_OTF.
-    
-
-    Module Ground_Type_as_OT := Orders_to_OrderedType(Ground_Types_as_OTF).
-    Module String_as_OT := Orders_to_OrderedType(String_OTF).
-    Module List_Ground_Type_as_OTF := OrdersFunctor.List_as_OTF(Ground_Types_as_OTF).
-    Module List_List_Ground_Type_as_OTF := OrdersFunctor.List_as_OTF(List_Ground_Type_as_OTF).
-
-    Module List_Ground_Type_as_OT := OrdersFunctor.List_as_OT(List_List_Ground_Type_as_OTF).
-
-    
-    Module ground_maps := FMapList.Make_ord(String_as_OT) (List_Ground_Type_as_OT).
   
 
-    Structure rel_grounding: Type :=
-      MkRelGrounding {
-          r: rel;
-          arg_types: Vector.t ground_types (num_args r);
-        }.
+  Module Ground_Type_as_OT := Orders_to_OrderedType(Ground_Types_as_OTF).
+  Module String_as_OT := Orders_to_OrderedType(String_OTF).
+  Module List_Ground_Type_as_OTF := OrdersFunctor.List_as_OTF(Ground_Types_as_OTF).
+  Module List_List_Ground_Type_as_OTF := OrdersFunctor.List_as_OTF(List_Ground_Type_as_OTF).
 
-    Print ground_maps.
+  Module List_Ground_Type_as_OT := OrdersFunctor.List_as_OT(List_List_Ground_Type_as_OTF).
 
-    Print ground_maps.Data.
+  
+  Module ground_maps := FMapList.Make_ord(String_as_OT) (List_Ground_Type_as_OT).
+  
 
-    Print ground_maps.MapS.
-    
-    (* Definition rel_grounding_assoc  *)
-    
-    Print ground_maps.MapS.In.
-    
-    
-    Structure grounding: Type :=
-      MkGrounding {
-          edbs: rset.t;
-          grounds: ground_maps.t;
-          edbs_is_edb: forall (r: rel), In r edbs -> rtype r = edb;
-          grounded: forall (r: rel), In r edbs <-> exists g, ground_maps.MapS.find (name r) grounds = Some g;
-          groundings_are_fine :
-          forall (r: rel) lg,
-            In r edbs <->
+  Structure rel_grounding: Type :=
+    MkRelGrounding {
+        r: rel;
+        arg_types: Vector.t ground_types (num_args r);
+      }.
+
+  Print ground_maps.
+
+  Print ground_maps.Data.
+
+  Print ground_maps.MapS.
+  
+  (* Definition rel_grounding_assoc  *)
+  
+  Print ground_maps.MapS.In.
+  
+  
+  Structure grounding: Type :=
+    MkGrounding {
+        edbs: rset.t;
+        grounds: ground_maps.t;
+        edbs_is_edb: forall (r: rel), In r edbs -> rtype r = edb;
+        grounded: forall (r: rel), In r edbs <-> exists g, ground_maps.MapS.find (name r) grounds = Some g;
+        groundings_are_fine :
+        forall (r: rel) lg,
+          In r edbs <->
             (ground_maps.MapS.find (name r) grounds = Some lg ->
-            Forall (fun g => (num_args r) = Datatypes.length g) lg);
-          
-        }.
+             Forall (fun g => (num_args r) = Datatypes.length g) lg);
+        
+      }.
 
-    Structure iter_grounding : Type :=
-      MkIterGrounding {
-          iter_rels : rset.t;
-          iter_grounds: ground_maps.t;
-          iter_grounded: forall (r: rel), In r iter_rels <-> exists g, ground_maps.MapS.find (name r) iter_grounds = Some g;
-          iter_groundings_are_fine :
-          (forall (r: rel) lg,
-              In r iter_rels <->
+  Structure iter_grounding : Type :=
+    MkIterGrounding {
+        iter_rels : rset.t;
+        iter_grounds: ground_maps.t;
+        iter_grounded: forall (r: rel), In r iter_rels <-> exists g, ground_maps.MapS.find (name r) iter_grounds = Some g;
+        iter_groundings_are_fine :
+        (forall (r: rel) lg,
+            In r iter_rels <->
               (ground_maps.MapS.find (name r) iter_grounds = Some lg ->
-              Forall (fun g => num_args r = Datatypes.length g) lg));
-        }.
+               Forall (fun g => num_args r = Datatypes.length g) lg));
+      }.
 
-    Definition grounding_to_iter_grounding : grounding -> iter_grounding.
-    Proof.
-      intros. destruct X.
-      eapply (MkIterGrounding edbs0 grounds0
-                              grounded0 groundings_are_fine0).
-    Defined.
+  Definition grounding_to_iter_grounding : grounding -> iter_grounding.
+  Proof.
+    intros. destruct X.
+    eapply (MkIterGrounding edbs0 grounds0
+                            grounded0 groundings_are_fine0).
+  Defined.
 
-    Print ground_maps.
+  Print ground_maps.
+
+  Inductive monotone_ops :=
+  | UNIT
+  | ATOM (R: rel)
+  | UNION (m1 m2: monotone_ops)
+  | PROJ (proj_vars: list string) (m: monotone_ops)
+  | JOIN (join_vars: string_sets.t) (m1 m2: monotone_ops).
+
+  Definition option_bind {A B: Type} (f: A -> option B) (a: option A) :=
+    match a with
+    | Some a' => f a'
+    | None => None
+    end.
+
+  Fixpoint monotone_vars (m: monotone_ops) (res: option string_sets.t) :=
+    match m with
+    | UNIT => Some (string_sets.empty)
+    | ATOM R =>
+        option_map (string_sets.union (vector_to_string_set (args R))) res
+    | UNION m1 m2 => monotone_vars m2 (monotone_vars m1 res)
+    | PROJ proj_vars m => Some (list_to_string_set proj_vars)
+    | JOIN join_vars m1 m2 => monotone_vars m2 (monotone_vars m1 res)
+    end.
+
+  (* We'll assume that atoms in a rule are ordered such that you can join them from left to right, i.e.,
+   * A(a, b), B(b, c, d), C(c, d, e f) -> JOIN { c, d } (JOIN { b } A(a, b) B(b, c, d)) C(c, d, e, f) 
+   * This is probably not true in general (may need to split in half for example) but it's convenient
+   *)
+  Fixpoint rule_to_monotone_op_helper (rels: list rel) (res: option monotone_ops) :=
+    match rels with
+    | nil => res
+    | hd :: rst =>
+        let hd_args := vector_to_string_set (args hd) in
+        let m_args := option_bind (fun r => monotone_vars r (Some string_sets.empty)) res in
+        match m_args, res with
+        | Some m_args', Some res' =>
+            let j_args := string_sets.inter hd_args m_args' in
+            rule_to_monotone_op_helper rst (Some (JOIN j_args res' (ATOM hd)))
+        | _, _ => None
+        end
+    end.
+  Definition rule_to_monotone_op (rels: list rel) :=
+    match rels with
+    | hd :: rst =>
+        rule_to_monotone_op_helper rst (Some (ATOM hd))
+    | nil => Some UNIT
+    end.
+
+  Fixpoint rels_to_rules (R: string) (rules: list rule) :=
+    match rules with
+    | hd :: rst =>
+        match hd with
+        | rule_def_empty rule_hd =>
+            nil
+        | rule_def rule_hd rule_body =>
+            if String_OTF.eq_dec (name rule_hd) R then
+              (rule_hd, rule_body) :: (rels_to_rules R rst)
+            else
+              rels_to_rules R rst
+        | rule_def_exists rule_hd rule_exists rule_body =>
+            if String_OTF.eq_dec (name rule_hd) R then
+              (rule_hd, rule_body) :: (rels_to_rules R rst)
+            else
+              rels_to_rules R rst
+        end
+    | _ => nil
+    end.
+
+  Definition get_head (r: rule) :=
+    match r with
+    | rule_def_empty r' => r'
+    | rule_def r' _ => r'
+    | rule_def_exists r' _ _ => r'
+    end.
+
+  Print rset.Raw.
+
+  Definition rules_to_monotone_op (rules: list rule) :=
+    let heads := List.fold_left (fun acc elmt =>
+                                   string_sets.add (name elmt) acc)
+                                (List.map get_head rules)
+                                string_sets.empty
+    in
+    let heads_rules := List.map (fun elmt =>
+                                   (elmt, rels_to_rules elmt rules))
+                                (string_sets.elements heads) in
+    let m_heads := List.map
+                     (fun elmt =>
+                        match elmt with
+                        | (name, name_rules) =>
+                            (name,
+                              List.map
+                                (fun elmt' =>
+                                   match elmt' with
+                                   | (hd, body) =>
+                                       option_map (PROJ (Vector.to_list (args hd))) (rule_to_monotone_op body)
+                                   end)
+                                name_rules)
+                        end)
+                     heads_rules in
+    m_heads.
+  
+  Check rules_to_monotone_op.
+
+  Module str_gt_list_ot := List_as_OT(String_GT_OT).
 
 
-  (*
+  Fixpoint evaluate_monotone_op (mapping: string -> option gset.t) (m: monotone_ops): option (ListSet.set (list String_GT_OT.t)) :=
+    match m with
+    | UNIT => None
+    | ATOM R =>
+        match mapping (name R) with
+        | Some gts => Some (ListSet.set_add str_gt_list_ot.eq_dec gts ListSet.empty_set)
+        | _ => None
+        end
+    | UNION m1 m2 =>
+        let m1_eval := evaluate_monotone_op mapping m1 in
+        let m2_eval := evaluate_monotone_op mapping m2 in
+        match m1_eval, m2_eval with
+        | Some t1, Some t2 =>
+            Some (ListSet.set_union str_gt_list_ot.eq_dec t1 t2)
+        | _, _ => None
+        end
+    | PROJ pvs m =>
+        None
+    end.
+        let m_eval := evaluate_monotone_op mapping m in
+        
+        
+        
+
+        
+        
+        
+
+        (* Fixpoint immediate_consequence_operator  *)
+
+        (*          Fixpoint naive_evaluation  *)
+                 
+
+                 (*
     Lemma String_as_OT_compare_eq_refl :
       forall (T: Type) s (a b c: T),
         match String_as_OT.compare s s with
@@ -600,10 +464,10 @@ Module RelSemantics.
   
 
   
-    (* 
+ (* 
       Theorem magic_sets_optimization_okay :
       answer1 = semantics of program1 ->
 answer2 = semantics of program2 ->
 answer1 = answer2.
- *)
-*)
+                  *)
+                  *)

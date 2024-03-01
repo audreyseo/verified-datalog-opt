@@ -6,3 +6,4 @@
 ./DatalogProps.v
 ./StringOrders.v
 ./RelOrdered.v
+./OrderedGroundTypes.v

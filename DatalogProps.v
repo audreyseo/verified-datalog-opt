@@ -1,6 +1,6 @@
-From Coq Require Import MSetWeakList List String Arith Psatz DecidableTypeEx OrdersEx.
+From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList MSetWeakList.
 
-(* From VeriFGH Require Import Datalogo. *)
+From VeriFGH Require Import OrdersFunctor.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -22,7 +22,7 @@ Structure rel :=
       num_args: nat;
       args: Vector.t String_as_OT.t num_args;
       rtype : rel_type;
-      }.
+    }.
 
 Variant rule : Type :=
   | rule_def_empty (head: rel)
@@ -132,8 +132,8 @@ Section ProgramI.
   Let Qo'rule := rule_def_empty Qo'.
   Let Ro'yrule := (rule_def_exists Ro'y (list_to_string_set (cons "x" (cons "z" nil))) (cons Ro'x (cons Txyz nil))).
   Let Ro'zrule := (rule_def_exists Ro'z
-                            (list_to_string_set (cons "x" (cons "y" nil)))
-                            (cons Ro'x (cons Txyz (cons Roy nil)))).
+                                   (list_to_string_set (cons "x" (cons "y" nil)))
+                                   (cons Ro'x (cons Txyz (cons Roy nil)))).
   Let Ro'xrule := (rule_def Ro'x
                             (cons Qo' (cons Gx nil))).
   Let Roxrule := (rule_def Rox
@@ -219,182 +219,3 @@ rule1 = edb1(...) n edb2(...)
 
  *)
 
-(*
-Module RelSemantics.
-  Import rset.
-
-  Module RelTotalTransitiveBool <: Orders.TotalTransitiveLeBool'.
-    Include RelDec.
-    Definition rel_type_leb (rt1 rt2: rel_type) :=
-      match rt1, rt2 with
-      | idb, edb => false
-      | _, _ => true
-      end.
-    Module String_OTF <: Orders.OrderedTypeFull.
-      Include String_as_OT.
-      
-      Section StringLe.
-        (* Hypothesis (s1 s2: string). *)
-        Definition le (s1 s2: string) :=
-          String.leb s1 s2 = true.
-        Infix "<=" := le.
-        Notation "x >= y" := (y<=x) (only parsing).
-        Notation "x <= y <= z" := (x<=y /\ y<=z).
-        Infix "<" := lt.
-        Notation "x > y" := (y<x) (only parsing).
-        Notation "x < y < z" := (x<y /\ y<z).
-        Infix "==" := eq (at level 70, no associativity).
-        Notation "x ~= y" := (~eq x y) (at level 70, no associativity).
-
-        Lemma ascii_compare_same_as_ascii_ot_compare :
-          forall (a1 a2: Ascii.ascii),
-            Ascii_as_OT.compare a1 a2 = Ascii.compare a1 a2.
-        Proof.
-          reflexivity.
-        Qed.
-
-        Lemma string_compare_same_as_compare :
-          forall (s1 s2: string),
-            String.compare s1 s2 = compare s1 s2.
-        Proof.
-          reflexivity.
-        Qed.
-        
-        Lemma le_lteq :
-          forall (s1 s2: string),
-            (s1 <= s2) <-> (s1 < s2) \/ (s1 == s2).
-        Proof.
-          induction s1; split; intros.
-          - unfold le in H. destruct s2.
-            + right. reflexivity.
-            + left. reflexivity.
-          - destruct H.
-            + destruct s2; reflexivity.
-            + symmetry in H. rewrite H. reflexivity.
-          - destruct s2.
-            + inversion H.
-            + unfold le in H. destruct a, a0.
-              unfold String.leb in H. simpl in H.
-              destruct (Ascii.compare (Ascii.Ascii b b0 b1 b2 b3 b4 b5 b6)
-                                      (Ascii.Ascii b7 b8 b9 b10 b11 b12 b13 b14)) eqn:COMP.
-              * destruct (s1 ?= s2)%string eqn:C; try inversion H.
-                pose proof (String_as_OT.compare_spec).
-                unfold CompSpec in H0.
-                specialize (H0 s1 s2).
-                eapply OrderedTypeEx.String_as_OT.compare_helper_eq in C.
-                subst.
-                eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in COMP. rewrite COMP. right. reflexivity.
-                left. unfold lt.
-                simpl. eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in COMP. rewrite COMP. erewrite OrderedTypeEx.Ascii_as_OT.compare_helper_eq.
-                shelve.
-                eapply OrderedTypeEx.Ascii_as_OT.cmp_eq. symmetry. eassumption.
-                Unshelve.
-                assert (Ascii.Ascii b b0 b1 b2 b3 b4 b5 b6 = Ascii.Ascii b b0 b1 b2 b3 b4 b5 b6) by reflexivity.
-                unfold Ascii_as_OT.compare. simpl.
-                
-                destruct b, b0, b1, b2, b3, b4, b5, b6; simpl; try eassumption.
-              * left. unfold lt.
-                simpl.
-                rewrite ascii_compare_same_as_ascii_ot_compare.
-                rewrite COMP. reflexivity.
-              * inversion H.
-          - destruct H.
-            + destruct s2. inversion H.
-              unfold lt in H. simpl in H.
-              destruct (Ascii_as_OT.compare a a0) eqn:COMP; unfold le.
-              * assert (compare s1 s2 = Lt \/ s1 == s2) by (left; assumption).
-                eapply IHs1 in H0.
-                unfold String.leb. simpl.
-                rewrite ascii_compare_same_as_ascii_ot_compare in COMP. rewrite COMP.
-                rewrite string_compare_same_as_compare. rewrite H.
-                reflexivity.
-              * unfold String.leb. simpl.
-                rewrite ascii_compare_same_as_ascii_ot_compare in COMP. rewrite COMP. reflexivity.
-              * unfold String.leb. simpl.
-                rewrite ascii_compare_same_as_ascii_ot_compare in COMP.
-                rewrite COMP. inversion H.
-            + destruct s2. inversion H.
-              inversion H. unfold le. unfold String.leb. simpl.
-              assert (a0 = a0) by reflexivity.
-              eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in H0. unfold OrderedTypeEx.Ascii_as_OT.cmp in H0.
-              rewrite H0.
-              assert (s2 = s2) by reflexivity.
-                                   
-              eapply OrderedTypeEx.String_as_OT.cmp_eq in H3.
-              unfold OrderedTypeEx.String_as_OT.cmp in H3. rewrite H3. reflexivity.
-        Qed.
-                
-             
-              
-             
-                
-                
-                eapply OrderedTypeEx.Ascii_as_OT.cmp_eq in H0.
-                
-                unfold OrderedTypeEx.Ascii_as_OT.cmp in H0. rewrite H0.
-                assert (Ascii_as_OT.compare (Ascii.Ascii b b0 b1 b2 b3 b4 
-                
-          - 
-    End String_OTF.
-    Definition leb (r1 r2: rel) :=
-      andb (String.leb (name r1) (name r2))
-           (andb (Nat.leb (num_args r1) (num_args r2))
-                 (andb (Vector.fold_left2
-                          (fun acc elmt1 elmt2 =>
-                             andb acc
-                                  (String.leb elmt1 elmt2))
-                          true
-                          (args r1)
-                          (args r2))
-                       (rel_type_leb (rtype r1) (rtype r2)))).
-    
-
-  Lemma rel_type_dec :
-    forall (r1 r2: rel_type),
-      {r1 = r2} + {r1 <> r2}.
-  Proof.
-    destruct r1, r2; try (right; congruence); left; congruence.
-  Defined.
-  
-  Definition is_edb (r: rel) :=
-    if rel_type_dec (rtype r) edb then true
-    else false.
-
-  Variant ground_types : Set :=
-    | NAT (n: nat)
-    | STR (s: string).
-
-  
-
-  Structure rel_grounding: Type :=
-    MkRelGrounding {
-        r: rel;
-        arg_types: Vector.t ground_types (num_args r);
-      }.
-  
-  Definition rel_grounding_assoc 
-    
-  Structure grounding: Type :=
-    MkGrounding {
-        edbs: t;
-        grounds: (* finite map *)
-        is_edb: forall (r: rel), In r edbs -> rtype r = edb;
-        grounded: forall (r: rel), In 
-         
-        
-
-  Section RuleSemantics.
-    Hypothesis (r: rule).
-
-    
-  
-  Section Hypothesis (prog: program).
-  
-
-  
-    (* 
-      Theorem magic_sets_optimization_okay :
-      answer1 = semantics of program1 ->
-answer2 = semantics of program2 ->
-answer1 = answer2.
- *)*)

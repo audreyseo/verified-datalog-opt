@@ -390,6 +390,36 @@ Module RelSemantics.
       proj_relation pvs v = Some v' ->
       monotone_op_semantics g (PROJ pvs m) v'.
 
+  Fixpoint monotone_op_semantics_eval (g: ground_maps.t) (m: monotone_ops) : option (ListSet.set tup_type) :=
+    match m with
+    | UNIT => None
+    | ATOM R =>
+        match ground_maps.MapS.find (name R) g with
+        | Some v =>
+            Some (assign_vars_to_tuples R v)
+        | None => None
+        end
+    | JOIN jvs m1 m2 =>
+        match monotone_op_semantics_eval g m1, monotone_op_semantics_eval g m2 with
+        | Some v1, Some v2 =>
+            Some (join_relations jvs v1 v2)
+        | _, _ => None
+        end
+    | UNION m1 m2 =>
+        match monotone_op_semantics_eval g m1, monotone_op_semantics_eval g m2 with
+        | Some v1, Some v2 =>
+            Some (set_union str_gt_list_ot.eq_dec v1 v2)
+        | _, _ => None
+        end
+    | PROJ pvs m =>
+        match monotone_op_semantics_eval g m with
+        | Some v =>
+            proj_relation pvs v
+        | None => None
+        end
+    end.
+               
+
   
   Eval compute in ground_maps.t.
 
@@ -431,6 +461,98 @@ Module RelSemantics.
       rule_semantics g' rst g'' ->
       rule_semantics g ((rel_name, m) :: rst) g''.
 
+  Fixpoint rule_semantics_eval (g: ground_maps.t) (R: rel) (rulez: list (string * monotone_ops)) : option ground_maps.t :=
+    match rulez with
+    | nil => Some g
+    | (n, m) :: rst_rules =>
+        if string_dec (name R) n then
+          match monotone_op_semantics_eval g m with
+          | Some v =>
+              match anonymize_tuples (Vector.to_list (args R)) v with
+              | Some new_tuples =>
+                  let g' := ground_maps.MapS.mapi (fun k e =>
+                                    if string_dec k (name R) then
+                                      ListSet.set_union List_Ground_Type_as_OTF.eq_dec
+                                                        new_tuples e
+                                    else e)
+                                 g in
+                  rule_semantics_eval g' R rst_rules
+              | None => None
+              end
+          | None => None
+          end
+        else rule_semantics_eval g R rst_rules
+    end.
+
+  Fixpoint program_semantics_eval (g: ground_maps.t) (R: rel) (rulez: list (string * monotone_ops)) (fuel: nat) : option ground_maps.t :=
+    match fuel with
+    | 0 => Some g
+    | S fuel' =>
+        match rule_semantics_eval g R rulez with
+        | Some g' =>
+            program_semantics_eval g' R rulez fuel'
+        | None => None
+        end
+
+    end.
+                      
+                      
+
+
+  Section SemanticsExamples.
+    Section GraphEdges.
+      Let G := ground_maps.MapS.add "E" ( (NAT 1 :: NAT 2 :: nil) :: (NAT 2 :: NAT 3 :: nil) :: (NAT 3 :: NAT 4 :: nil) :: nil) (ground_maps.MapS.empty (list (list ground_types))).
+      Let G' := ground_maps.MapS.add "R" nil G.
+      Let Rxy := mk_rel "R" ("x" :: "y" :: nil) idb.
+      Let Exy := mk_rel "E" ("x" :: "y" :: nil) edb.
+      Let Ezy := mk_rel "E" ("z" :: "y" :: nil) edb.
+      Let Rxz := mk_rel "R" ("x" :: "z" :: nil) idb.
+
+      Let z_set := string_sets.add "z" string_sets.empty.
+      
+      Let Rxy_rule1 := rule_def Rxy (Exy :: nil).
+      Let Rxy_rule2 := rule_def_exists Rxy z_set (Rxz :: Ezy :: nil).
+
+      Let edb_set := string_sets.add "E" string_sets.empty.
+      Let idb_set := string_sets.add "R" string_sets.empty.
+      
+      Let GraphProgram := DlProgram idb_set edb_set Rxy (Rxy_rule1 :: Rxy_rule2 :: nil).
+      Let monotones := Eval compute in rules_to_monotone_op (rules GraphProgram).
+      Print monotones.
+
+      Let monotones' := Eval compute in List.fold_left
+                          (fun (acc: list (string * monotone_ops)) (elmt: string * (list (option monotone_ops))) =>
+                             let (name, oms) := elmt in
+                             List.fold_left (fun (acc': list (string * monotone_ops))
+                                               (elmt: option monotone_ops) =>
+                                               
+                                               match elmt with
+                                               | Some m =>
+                                                   (name, m) :: acc'
+                                               | None =>
+                                                   acc
+                                               end)
+                                            oms
+                                            acc
+                             )
+                          monotones
+                          nil.
+
+      Print monotones'.
+
+      Let meaning := Eval compute in program_semantics_eval G' Rxy monotones' 2.
+
+      Let find_meaning x := match meaning with
+                            | Some m => ground_maps.MapS.find x m
+                            | None => None
+                            end.
+
+      Eval compute in (find_meaning "R").
+    End GraphEdges.
+  End SemanticsExamples.
+    
+
+    
 
 End RelSemantics.
 

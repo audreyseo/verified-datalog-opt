@@ -11,10 +11,6 @@ Local Open Scope nat_scope.
 Module RelSemantics.
   Import rset.
 
-  
-
-  
-
   Module Ground_Type_as_OT := Orders_to_OrderedType(Ground_Types_as_OTF).
   Module String_as_OT := Orders_to_OrderedType(String_OTF).
   Module List_Ground_Type_as_OTF := OrdersFunctor.List_as_OTF(Ground_Types_as_OTF).
@@ -25,45 +21,12 @@ Module RelSemantics.
   
   Module ground_maps := FMapList.Make_ord(String_as_OT) (List_Ground_Type_as_OT).
 
-  Print ground_maps.MapS.In.
-
-  (* Module ModelTheoretic. *)
-  (*   Inductive rel_semantics : ground_maps.t -> list (list ground_types) -> rel -> Prop := *)
-  (*   | edb_semantics : *)
-  (*     forall (g: ground_maps.t) (y: list (list ground_types)) (R: rel), *)
-  (*       is_edb R = true -> *)
-  (*       (* ground_maps.MapS.In (name R) g -> *) *)
-  (*       ground_maps.MapS.find (name R) g = Some y -> *)
-  (*       Forall (fun elmt => *)
-  (*                 Datatypes.length elmt = num_args R) *)
-  (*              y -> *)
-  (*       rel_semantics g y R. *)
-
-  (*   Definition unit_list : list (list ground_types) := cons (nil) nil. *)
-    
-  (*   Inductive rule_semantics : ground_maps.t -> list rule -> Prop := *)
-  (*   | empty_rule_semantics : *)
-      
-
-  (*             End ModelTheoretic. *)
-  
-
   Structure rel_grounding: Type :=
     MkRelGrounding {
         r: rel;
         arg_types: Vector.t ground_types (num_args r);
       }.
 
-  Print ground_maps.
-
-  Print ground_maps.Data.
-
-  Print ground_maps.MapS.
-  
-  (* Definition rel_grounding_assoc  *)
-  
-  Print ground_maps.MapS.In.
-  
   
   Structure grounding: Type :=
     MkGrounding {
@@ -97,8 +60,6 @@ Module RelSemantics.
     eapply (MkIterGrounding edbs0 grounds0
                             grounded0 groundings_are_fine0).
   Defined.
-
-  Print ground_maps.
 
   Inductive monotone_ops :=
   | UNIT
@@ -288,53 +249,48 @@ Module RelSemantics.
                    (Some nil).
   
   
-  Locate "++".
-  
   Definition join_tuples (jvs: list string) (assoc1 assoc2: list (string * ground_types)) :=
     if check_join_vars jvs assoc1 assoc2 then
       let jv_set := list_to_string_set jvs in
       let assoc1_vars := string_sets.diff (get_vars_set assoc1) jv_set in
       let assoc2_vars := string_sets.diff (get_vars_set assoc2) jv_set in
-      let first_vars := (string_sets.fold (fun elmt acc =>
-                                                   match assoc_lookup assoc1 elmt with
-                                                   | Some g =>
-                                                       option_map (cons (elmt, g)) acc
-                                                       (* Some ((elmt, g) :: acc) *)
-                                                   | None => None
-                                                   end)
-                                                assoc1_vars
-                                                (Some nil)) in
-      let joined := (string_sets.fold (fun elmt acc =>
-                                         match assoc_lookup assoc1 elmt with
-                                         | Some g =>
-                                             option_map (cons (elmt, g)) acc
-                                             (* Some ((elmt, g) :: acc) *)
-                                         | None => None
-                                       end)
-                                      jv_set
-                                      (Some nil)) in
-      let second_vars := string_sets.fold (fun elmt acc =>
-                                             match assoc_lookup assoc2 elmt with
-                                             | Some g =>
-                                                 option_map (cons (elmt, g)) acc
-                                                 (* Some ((elmt, g) :: acc) *)
-                                             | None => None
-                                             end)
-                                          assoc2_vars
-                                          (Some nil) in
+      let first_vars := 
+        string_sets.fold (fun elmt acc =>
+                            match assoc_lookup assoc1 elmt with
+                            | Some g =>
+                                option_map (cons (elmt, g)) acc
+                            | None => None
+                            end)
+                         assoc1_vars
+                         (Some nil) in
+      let joined :=
+        string_sets.fold (fun elmt acc =>
+                            match assoc_lookup assoc1 elmt with
+                            | Some g =>
+                                option_map (cons (elmt, g)) acc
+                            | None => None
+                            end)
+                         jv_set
+                         (Some nil) in
+      let second_vars :=
+        string_sets.fold (fun elmt acc =>
+                            match assoc_lookup assoc2 elmt with
+                            | Some g =>
+                                option_map (cons (elmt, g)) acc
+                            | None => None
+                            end)
+                         assoc2_vars
+                         (Some nil) in
       match first_vars, joined, second_vars with
       | Some fv, Some jv, Some sv =>
           Some (fv ++ jv ++ sv)
       | _, _, _ => None
       end
     else None.
-                                                
-                                       
+  
+  
     
                   
-  
-  Check rules_to_monotone_op.
-
   
   Definition join_relations (jvs: list string) (v1 v2: ListSet.set tup_type) :=
     set_fold_left (fun (acc: ListSet.set tup_type) (elmt: (tup_type * tup_type)) =>
@@ -365,32 +321,34 @@ Module RelSemantics.
                    (@empty_set tup_type).
                         
   Inductive monotone_op_semantics : ground_maps.t -> monotone_ops -> (ListSet.set tup_type) -> Prop :=
-  (* | unit_semantics : *)
-  (*   forall (g: ground_maps.t), *)
-  (*     monotone_op_semantics g UNIT (ground_maps.MapS.add  *)
   | atom_semantics :
     forall (R: rel) (g: ground_maps.t) (v: list (list ground_types)),
       ground_maps.MapS.find (name R) g = Some v ->
       monotone_op_semantics g (ATOM R) (assign_vars_to_tuples R v)
   | join_semantics :
-    forall (g: ground_maps.t) (m1 m2: monotone_ops) (jvs: list string) (v1 v2 v: (ListSet.set tup_type)),
+    forall (g: ground_maps.t) (m1 m2: monotone_ops)
+      (jvs: list string) (v1 v2 v: (ListSet.set tup_type)),
       monotone_op_semantics g m1 v1 ->
       monotone_op_semantics g m2 v2 ->
       v = join_relations jvs v1 v2 ->
       monotone_op_semantics g (JOIN jvs m1 m2) v
   | union_semantics :
-    forall (g: ground_maps.t) (m1 m2: monotone_ops) (v1 v2 v: ListSet.set tup_type),
+    forall (g: ground_maps.t) (m1 m2: monotone_ops)
+      (v1 v2 v: ListSet.set tup_type),
       monotone_op_semantics g m1 v1 ->
       monotone_op_semantics g m2 v2 ->
       v = set_union str_gt_list_ot.eq_dec v1 v2 ->
       monotone_op_semantics g (UNION m1 m2) v
   | proj_semantics :
-    forall (g: ground_maps.t) (m: monotone_ops) (pvs: list string) (v v': ListSet.set tup_type),
+    forall (g: ground_maps.t) (m: monotone_ops)
+      (pvs: list string) (v v': ListSet.set tup_type),
       monotone_op_semantics g m v ->
       proj_relation pvs v = Some v' ->
       monotone_op_semantics g (PROJ pvs m) v'.
 
-  Fixpoint monotone_op_semantics_eval (g: ground_maps.t) (m: monotone_ops) : option (ListSet.set tup_type) :=
+  Fixpoint monotone_op_semantics_eval
+           (g: ground_maps.t)
+           (m: monotone_ops) : option (ListSet.set tup_type) :=
     match m with
     | UNIT => None
     | ATOM R =>
@@ -400,13 +358,15 @@ Module RelSemantics.
         | None => None
         end
     | JOIN jvs m1 m2 =>
-        match monotone_op_semantics_eval g m1, monotone_op_semantics_eval g m2 with
+        match monotone_op_semantics_eval g m1,
+          monotone_op_semantics_eval g m2 with
         | Some v1, Some v2 =>
             Some (join_relations jvs v1 v2)
         | _, _ => None
         end
     | UNION m1 m2 =>
-        match monotone_op_semantics_eval g m1, monotone_op_semantics_eval g m2 with
+        match monotone_op_semantics_eval g m1,
+          monotone_op_semantics_eval g m2 with
         | Some v1, Some v2 =>
             Some (set_union str_gt_list_ot.eq_dec v1 v2)
         | _, _ => None
@@ -423,7 +383,9 @@ Module RelSemantics.
   
   Eval compute in ground_maps.t.
 
-  Fixpoint anonymize_tuple (names: list string) (t: tup_type) : option (list ground_types) :=
+  Fixpoint anonymize_tuple
+           (names: list string)
+           (t: tup_type) : option (list ground_types) :=
     match names with
     | hd :: tl => match assoc_lookup t hd with
                 | Some g => option_map (cons g) (anonymize_tuple tl t)
@@ -432,7 +394,9 @@ Module RelSemantics.
     | nil => Some nil
     end.
 
-  Definition anonymize_tuples (names: list string) (v: ListSet.set tup_type) : option (list (list ground_types)) :=
+  Definition anonymize_tuples
+             (names: list string)
+             (v: ListSet.set tup_type) : option (list (list ground_types)) :=
     set_fold_right (fun elmt acc =>
                       match anonymize_tuple names elmt with
                       | Some t =>
@@ -448,20 +412,29 @@ Module RelSemantics.
     forall (g: ground_maps.t),
       rule_semantics g nil g
   | cons_rules_semantics :
-    forall (g g' g'': ground_maps.t) (v: ListSet.set tup_type) (rel_name: string) (m: monotone_ops) (R: rel) (new_tuples: list (list ground_types)) (rst: list (string * monotone_ops)),
+    forall (g g' g'': ground_maps.t)
+      (v: ListSet.set tup_type)
+      (rel_name: string)
+      (m: monotone_ops) (R: rel)
+      (new_tuples: list (list ground_types))
+      (rst: list (string * monotone_ops)),
       name R = rel_name ->
       monotone_op_semantics g m v ->
       Some new_tuples = anonymize_tuples (Vector.to_list (args R)) v ->
-      g' = ground_maps.MapS.mapi (fun k e =>
-                                    if string_dec k rel_name then
-                                      ListSet.set_union List_Ground_Type_as_OTF.eq_dec
-                                                        new_tuples e
-                                    else e)
-                                 g ->
+      g' = ground_maps.MapS.mapi
+             (fun k e =>
+                if string_dec k rel_name then
+                  ListSet.set_union List_Ground_Type_as_OTF.eq_dec
+                                    new_tuples e
+                else e)
+             g ->
       rule_semantics g' rst g'' ->
       rule_semantics g ((rel_name, m) :: rst) g''.
 
-  Fixpoint rule_semantics_eval (g: ground_maps.t) (R: rel) (rulez: list (string * monotone_ops)) : option ground_maps.t :=
+  Fixpoint rule_semantics_eval
+           (g: ground_maps.t)
+           (R: rel)
+           (rulez: list (string * monotone_ops)) : option ground_maps.t :=
     match rulez with
     | nil => Some g
     | (n, m) :: rst_rules =>
@@ -470,12 +443,14 @@ Module RelSemantics.
           | Some v =>
               match anonymize_tuples (Vector.to_list (args R)) v with
               | Some new_tuples =>
-                  let g' := ground_maps.MapS.mapi (fun k e =>
-                                    if string_dec k (name R) then
-                                      ListSet.set_union List_Ground_Type_as_OTF.eq_dec
-                                                        new_tuples e
-                                    else e)
-                                 g in
+                  let g' :=
+                    ground_maps.MapS.mapi
+                      (fun k e =>
+                         if string_dec k (name R) then
+                           ListSet.set_union List_Ground_Type_as_OTF.eq_dec
+                                             new_tuples e
+                         else e)
+                      g in
                   rule_semantics_eval g' R rst_rules
               | None => None
               end
@@ -484,7 +459,11 @@ Module RelSemantics.
         else rule_semantics_eval g R rst_rules
     end.
 
-  Fixpoint program_semantics_eval (g: ground_maps.t) (R: rel) (rulez: list (string * monotone_ops)) (fuel: nat) : option ground_maps.t :=
+  Fixpoint program_semantics_eval
+           (g: ground_maps.t)
+           (R: rel)
+           (rulez: list (string * monotone_ops))
+           (fuel: nat) : option ground_maps.t :=
     match fuel with
     | 0 => Some g
     | S fuel' =>
@@ -496,12 +475,16 @@ Module RelSemantics.
 
     end.
                       
-                      
-
-
   Section SemanticsExamples.
     Section GraphEdges.
-      Let G := ground_maps.MapS.add "E" ( (NAT 1 :: NAT 2 :: nil) :: (NAT 2 :: NAT 3 :: nil) :: (NAT 3 :: NAT 4 :: nil) :: nil) (ground_maps.MapS.empty (list (list ground_types))).
+      Let G :=
+            ground_maps.MapS.add
+              "E"
+              ( (NAT 1 :: NAT 2 :: nil)
+                  ::
+                  (NAT 2 :: NAT 3 :: nil) ::
+                  (NAT 3 :: NAT 4 :: nil) :: nil)
+              (ground_maps.MapS.empty (list (list ground_types))).
       Let G' := ground_maps.MapS.add "R" nil G.
       Let Rxy := mk_rel "R" ("x" :: "y" :: nil) idb.
       Let Exy := mk_rel "E" ("x" :: "y" :: nil) edb.
@@ -520,25 +503,25 @@ Module RelSemantics.
       Let monotones := Eval compute in rules_to_monotone_op (rules GraphProgram).
       Print monotones.
 
-      Let monotones' := Eval compute in List.fold_left
-                          (fun (acc: list (string * monotone_ops)) (elmt: string * (list (option monotone_ops))) =>
-                             let (name, oms) := elmt in
-                             List.fold_left (fun (acc': list (string * monotone_ops))
-                                               (elmt: option monotone_ops) =>
-                                               
-                                               match elmt with
-                                               | Some m =>
-                                                   (name, m) :: acc'
-                                               | None =>
-                                                   acc
-                                               end)
-                                            oms
-                                            acc
-                             )
-                          monotones
-                          nil.
-
-      Print monotones'.
+      Let monotones' :=
+            Eval compute in
+            List.fold_left
+              (fun (acc: list (string * monotone_ops)) (elmt: string * (list (option monotone_ops))) =>
+                 let (name, oms) := elmt in
+                 List.fold_left (fun (acc': list (string * monotone_ops))
+                                   (elmt: option monotone_ops) =>
+                                   
+                                   match elmt with
+                                   | Some m =>
+                                       (name, m) :: acc'
+                                   | None =>
+                                       acc
+                                   end)
+                                oms
+                                acc
+              )
+              monotones
+              nil.
 
       Let meaning := Eval compute in program_semantics_eval G' Rxy monotones' 2.
 
@@ -550,302 +533,4 @@ Module RelSemantics.
       Eval compute in (find_meaning "R").
     End GraphEdges.
   End SemanticsExamples.
-    
-
-    
-
 End RelSemantics.
-
-  (* Definition rules_to_ico (all_rules: list rule) : list (string * monotone_ops) := *)
-  (*   let ms := rules_to_monotone_op all_rules in *)
-  (*   let names :=  *)
-      
-      
-
-  (* Fixpoint evaluate_monotone_op (mapping: string -> option gset.t) (m: monotone_ops): option (ListSet.set (list String_GT_OT.t)) := *)
-  (*   match m with *)
-  (*   | UNIT => None *)
-  (*   | ATOM R => *)
-  (*       match mapping (name R) with *)
-  (*       | Some gts => Some (ListSet.set_add str_gt_list_ot.eq_dec gts ListSet.empty_set) *)
-  (*       | _ => None *)
-  (*       end *)
-  (*   | UNION m1 m2 => *)
-  (*       let m1_eval := evaluate_monotone_op mapping m1 in *)
-  (*       let m2_eval := evaluate_monotone_op mapping m2 in *)
-  (*       match m1_eval, m2_eval with *)
-  (*       | Some t1, Some t2 => *)
-  (*           Some (ListSet.set_union str_gt_list_ot.eq_dec t1 t2) *)
-  (*       | _, _ => None *)
-  (*       end *)
-  (*   | PROJ pvs m => *)
-  (*       None *)
-  (*   end. *)
-  (*       let m_eval := evaluate_monotone_op mapping m in *)
-        
-        
-        
-
-        
-        
-        
-
-        (* Fixpoint immediate_consequence_operator  *)
-
-        (*          Fixpoint naive_evaluation  *)
-                 
-
-                 (*
-    Lemma String_as_OT_compare_eq_refl :
-      forall (T: Type) s (a b c: T),
-        match String_as_OT.compare s s with
-        | OrderedType.GT _ => a
-        | OrderedType.EQ _ => b
-        | OrderedType.LT _ => c
-        end = b.
-    Proof.
-      intros T. induction s; intros.
-      - simpl. reflexivity.
-      - 
-        unfold String_as_OT.compare.
-        destruct (String_OTF.eq_dec (String a s) (String a s)) eqn:H.
-        reflexivity.
-        simpl.
-        congruence.
-    Defined.
-
-  Module StringOther := OtherOTFFacts(String_OTF).
-  Module String_OTF_to_OT := OTF_to_OT_Facts(String_OTF).
-
-  Lemma String_compares :
-    forall (s1 s2: string),
-      String_OTF.compare s1 s2 = OrdersEx.String_as_OT.compare s1 s2.
-  Proof.
-    induction s1; intros.
-    - simpl. destruct s2; simpl; reflexivity.
-    - simpl. destruct s2. reflexivity.
-      destruct (Ascii_as_OT.compare a a0); reflexivity.
-  Defined.
-      
-
-    Definition add_to_iter_grounding (key: rel) (elmt: list (list (list ground_types))) (ig: iter_grounding) : iter_grounding.
-    Proof.
-      destruct ig.
-      (* assert (elt). *)
-      (* eapply key. *)
-      pose proof (IG := MkIterGrounding (add key iter_rels0)).
-      specialize (IG (ground_maps.MapS.add (name key) elmt iter_grounds0)).
-      assert ((forall r : rel,
-        In r (add key iter_rels0) <->
-        exists g : list (list (list ground_types)),
-          ground_maps.MapS.find (elt:=list (list (list ground_types)))
-            (name r) (ground_maps.MapS.add (name key) elmt iter_grounds0) =
-            Some g)).
-      {
-        clear IG. clear iter_groundings_are_fine0.
-        revert iter_grounded0. revert iter_rels0.
-        destruct iter_grounds0.
-        induction this0; intros; split; intros.
-        - assert (forall r: rel, In r iter_rels0 -> False).
-          {
-            intros.
-            eapply iter_grounded0 in H0. destruct H0.
-            unfold ground_maps.MapS.find in H0. unfold ground_maps.MapS.Raw.find in H0. simpl in H0. inversion H0.
-          }
-          Print rset.
-          assert (choose iter_rels0 = None).
-          {
-            destruct (choose iter_rels0) eqn:CHOOSE.
-            pose proof (C' := CHOOSE).
-            eapply choose_spec1 in C'.
-            eapply H0 in C'. inversion C'.
-            reflexivity.
-          }
-          eapply choose_spec2 in H1.
-          pose proof (ADD := add_spec). eapply ADD in H.
-          destruct H.
-          rewrite H. exists elmt.
-          unfold ground_maps.MapS.find. unfold ground_maps.MapS.Raw.find. simpl.
-          rewrite String_OTF_to_OT.OT_to_OTF_match_eq_refl. reflexivity.
-          eapply H1 in H. inversion H.
-        - specialize (iter_grounded0 r0).
-          eapply add_spec.
-          destruct (rel_dec r0 key).
-          + left. eassumption.
-          + right. eapply iter_grounded0.
-            destruct H. exists x.
-            unfold ground_maps.MapS.add in H. simpl in H.
-            Set Printing All.
-        - inversion sorted. specialize (IHthis0 H2). subst.
-          pose proof (ADD := add_spec). eapply ADD in H. destruct H.
-          + subst. exists elmt.
-            unfold ground_maps.MapS.find.
-            unfold ground_maps.MapS.Raw.find.
-            simpl. destruct a.
-            rewrite <- String_OTF_to_OT.OT_to_OTF_match. fold String_OTF.compare.
-            destruct (String_OTF.compare (name key) s) eqn:COMP;
-              [ rewrite <- String_OTF_to_OT.OT_to_OTF_match; try (fold String_OTF.compare; rewrite StringOther.otf_compare_same) .. | ].
-            reflexivity. reflexivity.
-            rewrite <- String_OTF_to_OT.OT_to_OTF_match. fold String_OTF.compare.
-            rewrite COMP.
-            unfold ground_maps.MapS.Raw.add.
-            destruct this0.
-            rewrite String_OTF_to_OT.OT_to_OTF_match_eq_refl. reflexivity.
-            specialize (IHthis0 iter_rels0).
-            specialize (IHthis0 
-            
-            
-          
-          
-          pose proof (ADD := add_spec). eapply ADD in H.
-          destruct H.
-          + subst. rewrite <- String_OTF_to_OT.OT_to_OTF_match. fold String_OTF.compare. exists elmt.
-            rewrite StringOther.otf_compare_same. reflexivity.
-          + specialize (iter_grounded0 r0 H). destruct iter_grounded0.
-            exists x.
-        intros.
-        Print rset.
-        pose proof (ADD := add_spec).
-        eapply ADD in H.
-        destruct H.
-        - exists elmt.
-          Print ground_maps.MapS.Raw.
-          unfold ground_maps.MapS.find.
-          erewrite ground_maps.MapS.Raw.find_equation.
-          unfold ground_maps.MapS.this. simpl.
-          unfold ground_maps.MapS.Raw.add.
-          unfold ground_maps.MapS.this.
-          destruct (iter_grounds0).
-          destruct this0.
-          + simpl. destruct (String_as_OT.compare (name r0) (name key)).
-            rewrite H in l. eapply String_as_OT.lt_not_eq in l.
-            pose proof String_as_OT.eq_refl (name key).
-            eapply l in H0. inversion H0.
-            reflexivity.
-            rewrite H in l. eapply String_as_OT.lt_not_eq in l.
-            pose proof (String_as_OT.eq_refl (name key)).
-            eapply l in H0. inversion H0.
-          + rewrite H in *. simpl.
-            destruct p. destruct (String_as_OT.compare (name key) s).
-            pose proof (OrderedTypeEx.String_as_OT.cmp_eq).
-            specialize (H0 (name key) (name key)).
-            destruct H0. specialize (H1 (eq_refl _)).
-            rewrite String_as_OT_compare_eq_refl. reflexivity.
-            rewrite String_as_OT_compare_eq_refl. reflexivity.
-            destruct this0.
-            * simpl.
-              pose proof String_as_OT.compare_spec.
-              specialize (H0 (name key) s).
-              
-              destruct (OrdersEx.String_as_OT.compare (name key) s).
-              inversion H0.
-              
-              unfold OrdersEx.String_as_OT.eq in H1.
-              unfold String_as_OT.lt in l0.
-              pose proof (String_OTF.compare_spec).
-              specialize (H2 s (name key)).
-              (* eapply StringOther.otf_eq_compare_eq in H1. *)
-              (* fold String_OTF.compare in H1. *)
-              (* unfold String_as_OT.compare. *)
-              (* eapply StringOther.otf_compare_sym in H1. *)
-              fold String_OTF.compare in H1.
-              pose proof (StringOther.otf_eq_lt_false).
-              fold String_OTF.compare in H3.
-              (* eapply StringOther.otf_compare_eq_eq in H1. *)
-              specialize (H3 _ _ H1).
-              eapply H3 in l0. inversion l0.
-              unfold String_as_OT.lt in l0.
-              eapply StringOther.otf_gt_implies_lt in l0.
-              fold String_OTF.compare in l0.
-              inversion H0.
-              unfold OrdersEx.String_as_OT.lt in H1.
-              pose proof (String_compares).
-              specialize (H2 (name key) s).
-              rewrite H1 in l0.
-              inversion l0.
-              unfold String_as_OT.lt in l0.
-              inversion H0.
-              unfold OrdersEx.String_as_OT.lt in H1.
-              pose proof (String_compares s (name key)).
-              rewrite <- String_OTF_to_OT.OT_to_OTF_match.
-              fold (String_OTF.compare).
-              eapply StringOther.otf_gt_implies_lt in l0.
-              fold (String_OTF.compare) in l0.
-              rewrite l0.
-              erewrite <- String_OTF_to_OT.OT_to_OTF_match.
-              fold (String_OTF.compare).
-              rewrite StringOther.otf_compare_same. reflexivity.
-            * rewrite <- String_OTF_to_OT.OT_to_OTF_match. fold (String_OTF.compare).
-              unfold String_as_OT.lt in l0.
-              eapply StringOther.otf_gt_implies_lt in l0.
-              fold String_OTF.compare in l0. rewrite l0.
-              destruct p.
-              rewrite <- String_OTF_to_OT.OT_to_OTF_match. fold String_OTF.compare.
-              destruct (String_OTF.compare (name key) s0) eqn:C.
-              simpl. rewrite <- String_OTF_to_OT.OT_to_OTF_match.
-              fold (String_OTF.compare).
-              rewrite StringOther.otf_compare_same. reflexivity.
-              simpl.
-              rewrite <- String_OTF_to_OT.OT_to_OTF_match.
-              fold String_OTF.compare.
-              rewrite StringOther.otf_compare_same.
-              reflexivity.
-              simpl.
-              rewrite <- String_OTF_to_OT.OT_to_OTF_match.
-              fold String_OTF.compare.
-              rewrite C.
-              destruct this0. simpl.
-              rewrite <- String_OTF_to_OT.OT_to_OTF_match.
-              fold String_OTF.compare.
-              rewrite StringOther.otf_compare_same.
-              reflexivity.
-              destruct p. rewrite <- String_OTF_to_OT.OT_to_OTF_match. fold String_OTF.compare.
-              destruct (String_OTF.compare (name key) s1) eqn:C'.
-                
-              
-              admit.
-            * unfold String_as_OT.lt in l0.
-              
-      
-    
-    
-    
-    
-
-    Section RuleSemantics.
-      Hypothesis (r: rule).
-      Print rset.
-      Print ground_maps.MapS.
-
-      
-
-      Definition evaluate_rule (ig: iter_grounding) (r: rule) :=
-        let grels := iter_rels ig in
-        let igrounds := iter_grounds ig in
-        let igrounded := iter_grounded ig in
-        let igroundingsfine := iter_groundings_are_fine ig in
-        match r with
-        | rule_def_empty hd =>
-            let n := name hd in
-            if mem (name hd) grels then
-              ig
-            else
-              MkIterGrounding (add n grels)
-                              (ground_maps.MapS.add n (cons (@nil ground_types) nil) igrounds)
-        | rule_def hd body =>
-        | rule_def_exists hd exists_vars body =>
-        end
-
-    
-  
-  Section Hypothesis (prog: program).
-  
-
-  
- (* 
-      Theorem magic_sets_optimization_okay :
-      answer1 = semantics of program1 ->
-answer2 = semantics of program2 ->
-answer1 = answer2.
-                  *)
-                  *)

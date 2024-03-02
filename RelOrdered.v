@@ -88,9 +88,7 @@ Section LebRel.
     if rel_type_dec (rtype r) edb then true
     else false.
 
-  Variant ground_types : Set :=
-    | NAT (n: nat)
-    | STR (s: string).
+  
 End LebRel.
 
 (* Lemma leb_total : forall x y, leb x y \/ leb y x. *)

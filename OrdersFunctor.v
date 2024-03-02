@@ -5,27 +5,9 @@ From Coq Require Import FMapInterface List Orders.
 
 Module Orders_to_OrderedType(OTF: UsualOrderedTypeFull) <: OrderedType.OrderedType.
   Import OTF.
-  (* Print OrderedTypeFull. *)
-  (* Module Type
- OrderedTypeFull =
- Sig
-   Parameter t : Type.
-   Parameter eq : t -> t -> Prop.
-   Parameter eq_equiv : Equivalence eq.
-   Parameter lt : t -> t -> Prop.
-   Parameter lt_strorder : StrictOrder lt.
-   Parameter lt_compat : Proper (eq ==> eq ==> iff) lt.
-   Parameter compare : t -> t -> comparison.
-   Parameter compare_spec :
-     forall x y : t, CompareSpec (eq x y) (lt x y) (lt y x) (compare x y).
-   Parameter eq_dec : forall x y : t, {eq x y} + {~ eq x y}.
-   Parameter le : t -> t -> Prop.
-   Parameter le_lteq : forall x y : t, le x y <-> lt x y \/ eq x y.
- End *)
   Definition t := t.
   Definition eq := eq.
   Definition lt := lt.
-  (* Create HintDb orders_hints. *)
   #[global]
    Hint Unfold t eq lt : ordered_type.
   Lemma eq_refl :
@@ -546,17 +528,6 @@ Module List_as_OTF(OTF: UsualOrderedTypeFull) <: UsualOrderedTypeFull.
   Definition eq (l1 l2: t) : Prop := l1 = l2.
   #[global]
   Hint Unfold eq : ordered_type.
-  (* Fixpoint eq (l1 l2: t) : Prop := *)
-  (*   match l1 with *)
-  (*   | nil => *)
-  (*       nil = l2 *)
-  (*   | cons hd tl => *)
-  (*       match l2 with *)
-  (*       | cons hd' tl' => *)
-  (*           OTF.eq hd hd' /\ eq tl tl' *)
-  (*       | _ => False *)
-  (*       end *)
-  (*   end. *)
   Definition eq_equiv : Equivalence eq := eq_equivalence.
 
   Fixpoint compare (l1 l2: t) :=
@@ -571,30 +542,12 @@ Module List_as_OTF(OTF: UsualOrderedTypeFull) <: UsualOrderedTypeFull.
             match OTF.compare hd hd' with
             | Eq => compare tl tl'
             | Lt => Lt
-                (* match compare tl tl' with *)
-                   (* | Lt => Lt *)
             | Gt => Gt
             end
         | nil => Gt
         end
     end.
   Definition lt (l1 l2: t) := compare l1 l2 = Lt.
-  (* Fixpoint lt (l1 l2: t) := *)
-  (*   match l1 with *)
-  (*   | nil => *)
-  (*       match l2 with *)
-  (*       | _ :: _ => True *)
-  (*       | _ => False *)
-  (*       end *)
-  (*   | hd :: tl => *)
-  (*       match l2 with *)
-  (*       | hd' :: tl' => *)
-  (*           OTF.lt hd hd' /\ lt tl tl' *)
-  (*       | _ => False *)
-  (*       end *)
-  (*   end. *)
-
-  
 
   Lemma compare_eq_refl :
     forall (a: t),
@@ -723,7 +676,6 @@ Module PairOrderedType(O1 O2: UsualOrderedTypeFull) <: OrderedType.
 
  Definition lt (p1 p2: t) :=
    O1.lt (fst p1) (fst p2) \/ (O1.eq (fst p1) (fst p2) /\ O2.lt (snd p1) (snd p2)).
-   (* (relation_disjunction (O1.lt @@1) (O1.eq * O2.lt))%signature. *)
 
 #[global]
  Instance lt_strorder : StrictOrder lt.
@@ -816,14 +768,9 @@ End PairOrderedType.
 Module Pair_as_OTF(O1 O2: UsualOrderedTypeFull) <: UsualOrderedTypeFull.
   Include PairOrderedType O1 O2.
 
-  (* Definition eq (p1 p2: t) := p1 = p2. *)
 
   Definition le (p1 p2: t) :=
     lt p1 p2 \/ eq p1 p2.
-    (* match p1, p2 with *)
-    (* | (a1, b1), (a2, b2) => *)
-        (* O1.le a1 a2 \/ (O1.eq a1 a2 /\ O2.le b1 b2) *)
-    (* end. *)
 
 
   Definition le_lteq : forall x y, le x y <-> lt x y \/ eq x y.
@@ -834,13 +781,6 @@ Module Pair_as_OTF(O1 O2: UsualOrderedTypeFull) <: UsualOrderedTypeFull.
     unfold le. unfold lt. unfold eq. unfold relation_disjunction. unfold RelationPairs.RelProd. unfold RelationPairs.RelCompFun. unfold relation_conjunction. unfold predicate_intersection. unfold predicate_union. unfold pointwise_extension.
     split; intros; eauto.
   Defined.
-
-  
-
-   
-                                                   
-  
-
 End Pair_as_OTF.
 
 

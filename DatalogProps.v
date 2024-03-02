@@ -15,12 +15,17 @@ Variant rel_type :=
   | edb.
 
 
+Variant ground_types : Set :=
+    | NAT (n: nat)
+    | STR (s: string).
+
 Structure rel :=
   Relation
     {
       name: String_as_OT.t;
       num_args: nat;
       args: Vector.t String_as_OT.t num_args;
+      
       rtype : rel_type;
     }.
 

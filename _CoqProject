@@ -1,4 +1,5 @@
 -R . VeriFGH
+./MoreOrders.v
 ./OrderedSemiring.v
 ./Datalogo.v
 ./MagicSets.v
@@ -7,3 +8,6 @@
 ./StringOrders.v
 ./RelOrdered.v
 ./OrderedGroundTypes.v
+./RelDecidable.v
+./DatalogSemantics.v
+./UIPList.v

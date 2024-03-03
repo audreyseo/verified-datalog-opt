@@ -6,8 +6,6 @@ Local Open Scope string_scope.
 Local Open Scope list_scope.
 Local Open Scope nat_scope.
 
-Print String_as_OT.t.
-
 Module string_sets := Make(String_as_OT).
 
 Variant rel_type :=
@@ -25,7 +23,7 @@ Structure rel :=
       name: String_as_OT.t;
       num_args: nat;
       args: Vector.t String_as_OT.t num_args;
-      
+      grounded_args: list (String_as_OT.t * ground_types);
       rtype : rel_type;
     }.
 
@@ -78,11 +76,15 @@ Structure program :=
       rules: list rule;
     }.
 
-Check Relation.
+(* Check Relation. *)
 
+Definition mk_rel_ground (n: String_as_OT.t) (args: list String_as_OT.t) (grounds: list (string * ground_types)) (rtype: rel_type) :=
+  Relation n (Datatypes.length args) (Vector.of_list args) grounds rtype.
 
 Definition mk_rel (n: String_as_OT.t) (args: list String_as_OT.t) (rtype: rel_type) :=
-  Relation n (Datatypes.length args) (Vector.of_list args) (rtype).
+  Eval compute in mk_rel_ground n args nil rtype.
+
+
 
 Eval compute in (mk_rel "R" (cons "x" nil) edb).
 
@@ -166,61 +168,4 @@ Section ProgramI.
                                           (cons Qoxrule nil))))))).
 
 End ProgramI.
-
-Section RelDec.
-  Hypothesis (r1 r2: rel).
-
-  Lemma rel_dec :
-    { r1 = r2 } + { r1 <> r2 }.
-  Proof.
-    destruct r1, r2.
-    destruct (String_as_OT.eq_dec name0 name1); try (right; congruence).
-    destruct (Nat.eq_dec num_args0 num_args1); try (right; congruence).
-    subst num_args0.
-    destruct (Vector.eq_dec _ _ String_as_OT.eqb_eq _ args0 args1); try (subst; right; congruence).
-    - subst.
-      destruct rtype0, rtype1; try (right; congruence).
-      all: left; congruence.
-    - subst. right. unfold not; intros. inversion H. subst.
-      inversion_sigma_on H1.
-      pose proof (Eqdep_dec.UIP_refl_nat).
-      specialize (H0 _ H1_).
-      rewrite H0 in H1_0. simpl in H1_0. congruence.
-  Defined.
-End RelDec.
-
-
-Module RelTyp <: Equalities.Typ.
-  Definition t := rel.
-End RelTyp.
-
-
-Module RelHasUsualEq <: Equalities.HasUsualEq(RelTyp).
-  Import RelTyp.
-  Definition eq := @Logic.eq t.
-End RelHasUsualEq.
-
-Module RelUsualEq <: Equalities.UsualEq.
-  Include RelHasUsualEq.
-  Include RelTyp.
-End RelUsualEq.
-
-Print Equalities.UsualDecidableType.
-
-Module RelDec <: Equalities.UsualDecidableType.
-  Include RelUsualEq.
-  Definition eq_equiv : RelationClasses.Equivalence RelUsualEq.eq := RelationClasses.eq_equivalence.
-  Definition eq_dec := rel_dec.
-
-End RelDec.
-
-Module rset := Make(RelDec).
-
-(* rule1 :- edb1(...), edb2(...)
-rule1 = {}
-rule1 = edb1(...) n edb2(...)
-
-
-
- *)
 

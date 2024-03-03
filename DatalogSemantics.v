@@ -278,54 +278,54 @@ Module RelSemantics.
       end
     else None.
   
-  Definition tt_set_prod (v1 v2: tt_set.t) :=
-    list_prod (tt_set.elements v1) (tt_set.elements v2).
+  (* Definition tt_set_prod (v1 v2: ListSet.set tup_type) := *)
+    (* list_prod (tt_set.elements v1) (tt_set.elements v2). *)
   
   
   
-  Definition join_relations (jvs: list string) (v1 v2: tt_set.t) :=
-    List.fold_left (fun (acc: tt_set.t) (elmt: (tup_type * tup_type)) =>
+  Definition join_relations (jvs: list string) (v1 v2: ListSet.set tup_type) :=
+    List.fold_left (fun (acc: ListSet.set tup_type) (elmt: (tup_type * tup_type)) =>
                            let (t1, t2) := elmt in
                            match join_tuples jvs t1 t2 with
-                           | Some tup => tt_set.add tup acc
+                           | Some tup => set_add str_gt_list_ot.eq_dec tup acc
                            | None => acc
                            end)
-                        (tt_set_prod v1 v2)
-                        (tt_set.empty).
+                        (set_prod v1 v2)
+                        (@empty_set tup_type).
 
-  Definition select_relation_f (n: string) (g: ground_types) (elmt: tup_type) (acc: tt_set.t) :=
+  Definition select_relation_f (n: string) (g: ground_types) (acc: ListSet.set tup_type) (elmt: tup_type)  :=
     match select_tuples n g elmt with
-    | Some tup => tt_set.add tup acc
+    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
     | None => acc
     end.
 
   Arguments select_relation_f _ _ / _ _.
 
-  Definition select_relation (n: string) (g: ground_types) (v: tt_set.t) :=
-    tt_set.fold (select_relation_f n g)
+  Definition select_relation (n: string) (g: ground_types) (v: ListSet.set tup_type) :=
+    set_fold_left (select_relation_f n g)
                   v
-                  (tt_set.empty).
+                  (@empty_set tup_type).
   Arguments select_relation / _ _ _.
 
-  Definition proj_relation (pvs: list string) (v: tt_set.t) :=
-    tt_set.fold (fun (elmt: tup_type) (acc: option tt_set.t) =>
+  Definition proj_relation (pvs: list string) (v: ListSet.set tup_type) :=
+    set_fold_left (fun (acc: option (ListSet.set tup_type)) (elmt: tup_type)  =>
                      match proj_tuples pvs elmt with
-                     | Some tup => option_map (tt_set.add tup) acc
+                     | Some tup => option_map (set_add str_gt_list_ot.eq_dec tup) acc
                      | None => None
                      end)
                   v
-                  (Some (tt_set.empty)).
+                  (Some (@empty_set tup_type)).
 
   Arguments proj_relation / _ _.
 
   Definition assign_vars_to_tuples (R: rel) (v: list (list ground_types)) :=
     List.fold_left (fun acc elmt =>
                       match variable_list_groundings_to_assoc_list R elmt with
-                      | Some l => tt_set.add l acc
+                      | Some l => set_add str_gt_list_ot.eq_dec l acc
                       | None => acc
                       end)
                    v
-                   (tt_set.empty).
+                   (@empty_set tup_type).
   Arguments assign_vars_to_tuples / _ _.
 
   Print ground_maps.
@@ -337,40 +337,40 @@ Module RelSemantics.
   Definition gm_type := ground_maps.t gt_set_type.
 
                         
-  Inductive monotone_op_semantics : gm_type -> monotone_ops -> tt_set.t -> Prop :=
+  Inductive monotone_op_semantics : gm_type -> monotone_ops -> ListSet.set tup_type -> Prop :=
   | atom_semantics :
     forall (R: rel) (g: gm_type) (v: list (list ground_types)),
       ground_maps.find (name R) g = Some v ->
       monotone_op_semantics g (ATOM R) (assign_vars_to_tuples R v)
   | select_semantics :
-    forall (g: gm_type) (v v': tt_set.t) (n: string) (gt: ground_types) (m: monotone_ops),
+    forall (g: gm_type) (v v': ListSet.set tup_type) (n: string) (gt: ground_types) (m: monotone_ops),
       monotone_op_semantics g m v ->
       v' = select_relation n gt v ->
       monotone_op_semantics g (SELECT n gt m) v'
   | join_semantics :
     forall (g: gm_type) (m1 m2: monotone_ops)
-      (jvs: list string) (v1 v2 v: (tt_set.t)),
+      (jvs: list string) (v1 v2 v: (ListSet.set tup_type)),
       monotone_op_semantics g m1 v1 ->
       monotone_op_semantics g m2 v2 ->
       v = join_relations jvs v1 v2 ->
       monotone_op_semantics g (JOIN jvs m1 m2) v
   | union_semantics :
     forall (g: gm_type) (m1 m2: monotone_ops)
-      (v1 v2 v: tt_set.t),
+      (v1 v2 v: ListSet.set tup_type),
       monotone_op_semantics g m1 v1 ->
       monotone_op_semantics g m2 v2 ->
-      v = tt_set.union v1 v2 ->
+      v = set_union str_gt_list_ot.eq_dec v1 v2 ->
       monotone_op_semantics g (UNION m1 m2) v
   | proj_semantics :
     forall (g: gm_type) (m: monotone_ops)
-      (pvs: list string) (v v': tt_set.t),
+      (pvs: list string) (v v': ListSet.set tup_type),
       monotone_op_semantics g m v ->
       proj_relation pvs v = Some v' ->
       monotone_op_semantics g (PROJ pvs m) v'.
 
   Fixpoint monotone_op_semantics_eval
            (g: gm_type)
-           (m: monotone_ops) : option (tt_set.t) :=
+           (m: monotone_ops) : option (ListSet.set tup_type) :=
     match m with
     | UNIT => None
     | ATOM R =>
@@ -396,7 +396,7 @@ Module RelSemantics.
         match monotone_op_semantics_eval g m1,
           monotone_op_semantics_eval g m2 with
         | Some v1, Some v2 =>
-            Some (tt_set.union v1 v2)
+            Some (set_union str_gt_list_ot.eq_dec v1 v2)
         | _, _ => None
         end
     | PROJ pvs m =>
@@ -408,7 +408,7 @@ Module RelSemantics.
     end.
 
   Lemma monotone_op_semantics_det :
-    forall (m: monotone_ops) (g: gm_type) (v v': tt_set.t),
+    forall (m: monotone_ops) (g: gm_type) (v v': ListSet.set tup_type),
       monotone_op_semantics g m v ->
       monotone_op_semantics g m v' ->
       v = v'.
@@ -427,7 +427,7 @@ Module RelSemantics.
   Qed.
 
   Lemma monotone_op_semantics_adequacy :
-    forall (m: monotone_ops) (g: gm_type) (v: tt_set.t),
+    forall (m: monotone_ops) (g: gm_type) (v: ListSet.set tup_type),
       Some v = monotone_op_semantics_eval g m <->
         monotone_op_semantics g m v.
   Proof.
@@ -516,8 +516,8 @@ Module RelSemantics.
 
   Definition anonymize_tuples
              (names: list string)
-             (v: tt_set.t) : option (list (list ground_types)) :=
-    tt_set.fold (fun elmt acc =>
+             (v: ListSet.set tup_type) : option (list (list ground_types)) :=
+    set_fold_left (fun acc elmt =>
                       match anonymize_tuple names elmt with
                       | Some t =>
                           option_map (set_add List_Ground_Type_as_OTF.eq_dec t) acc
@@ -526,7 +526,7 @@ Module RelSemantics.
                    v
                    (Some (@empty_set List_Ground_Type_as_OTF.t)).
 
-  Arguments tt_set.fold [A]%type_scope f%function_scope s _ /.
+  (* Arguments set_fold_left [A]%type_scope f%function_scope s _ /. *)
 
   Check ground_maps.mapi.
 
@@ -554,7 +554,7 @@ Module RelSemantics.
       rule_semantics g nil g
   | cons_rules_semantics :
     forall (g g' g'': gm_type)
-      (v: tt_set.t)
+      (v: ListSet.set tup_type)
       (rel_name: string)
       (m: monotone_ops) (R: rel)
       (new_tuples old_tuples: list (list ground_types))
@@ -724,128 +724,129 @@ Module RelSemantics.
   Ltac invs H := inversion H; subst.
   Ltac invc H := inversion H; subst; clear H.
 
-  Lemma tt_set_eq_refl :
-    forall (v v': tt_set.t),
+
+  Definition list_set_subset {T: Type} (v v': ListSet.set T) :=
+    forall (x: T),
+      set_In x v -> set_In x v'.
+  Arguments list_set_subset {T}%type_scope v v'/.
+
+  Definition list_set_equal {T: Type} (v v': ListSet.set T) :=
+    forall (x: T),
+      set_In x v <-> set_In x v'.
+  Arguments list_set_equal {T}%type_scope v v' /.
+
+  Lemma list_set_eq_refl {T: Type}:
+    forall (v v': ListSet.set T),
       v = v' ->
-      tt_set.Equal v v'.
+      list_set_equal v v'.
   Proof.
-    intros. subst. unfold tt_set.Equal. intros; split; intros; eassumption.
+    intros. simpl. subst. split; intros; eauto.
   Qed.
 
-  Print select_relation.
-
-  Print tt_set.Raw.fold.
-  Arguments tt_set.Raw.fold [B]%type_scope f%function_scope _ _ /.
-
-  Lemma tt_set_fold_In_init :
-    forall (v init: tt_set.t) (f: tup_type -> tt_set.t -> tt_set.t),
-      (forall (t: tup_type) (v': tt_set.t),
-          tt_set.Subset v' (f t v')) ->
-      forall init',
-        tt_set.Subset init init' ->
-        tt_set.Subset init (tt_set.fold f v init').
+  Lemma in_select_tuples_fold :
+    forall (v v0: ListSet.set tup_type) (x: tup_type),
+    forall var val,
+      List.In x v0 ->
+      List.In x
+              (set_fold_left
+                 (fun (acc : set tup_type) (elmt : tup_type) =>
+                    match select_tuples var val elmt with
+                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+                    | None => acc
+                    end) v v0).
   Proof.
-    destruct v. rename this0 into v. induction v; intros; simpl.
-    - unfold tt_set.fold. unfold tt_set.Raw.fold. simpl. unfold tt_set.Subset; intros; eauto.
-    - unfold tt_set.fold. unfold tt_set.Raw.fold. simpl.
-      unfold tt_set.fold in IHv. unfold tt_set.Raw.fold in IHv. simpl in IHv.
-      invs is_ok0. specialize (IHv H4). eapply IHv.
-      eassumption.
-      specialize (H a init').
-      unfold tt_set.Subset in *.
-      intros. eapply H. eapply H0. eassumption.
+    induction v; intros.
+    - simpl. eassumption.
+    - simpl. eapply IHv.
+      destruct (select_tuples var val a) eqn:S.
+      + eapply set_add_intro1. eassumption.
+      + eassumption.
   Qed.
 
-  Definition monotone (f: tup_type -> tt_set.t -> tt_set.t) :=
-    forall (t: tup_type) (v: tt_set.t),
-      tt_set.Subset v (f t v).
-
-  Arguments monotone f /.
-      
-      
-
-  Lemma tt_set_fold_In :
-    forall (v: tt_set.t) (f: tup_type -> tt_set.t -> tt_set.t) (f': tup_type -> option tup_type) (init: tt_set.t) (t t': tup_type),
-      tt_set.In t v ->
-      f' t = Some t' ->
-      tt_set.In t' (f t init) ->
-      monotone f ->
-      (* (forall (t'': tup_type) (v'': tt_set.t), tt_set.Subset v'' (f t'' v'')) -> *)
-      tt_set.In t' (tt_set.fold f v init).
+  Lemma in_select_tuples_fold2 :
+    forall (v v0: ListSet.set tup_type) (x: tup_type),
+    forall var val tup,
+      List.In x v ->
+      Some tup = select_tuples var val x ->
+      List.In tup (set_fold_left
+                 (fun (acc : set tup_type) (elmt : tup_type) =>
+                    match select_tuples var val elmt with
+                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+                    | None => acc
+                    end) v v0).
   Proof.
-    intros v. destruct v. rename this0 into v. induction v; simpl; intros.
+    induction v; intros.
     - inversion H.
-    - invs is_ok0.
-      specialize (IHv H6).
-      specialize (IHv f f').
-      unfold tt_set.In. unfold tt_set.Raw.In.
-      unfold tt_set.fold. unfold tt_set.Raw.fold. simpl.
-      unfold tt_set.In in IHv. unfold tt_set.Raw.In in IHv. simpl in IHv. unfold tt_set.fold in IHv. unfold tt_set.Raw.fold in IHv. simpl in IHv.
-      invs H.
-      + specialize (H2 t' (Basics.flip f init a)).
-        unfold Basics.flip in H2.
-        unfold tt_set.Subset in H2.
-        pose proof (tt_set_fold_In_init).
-        simpl in H3.
-        unfold tt_set.Subset in H3.
-        admit.
-  Admitted.
-        
-        
-      
-      
-  Lemma tt_set_fold_equal :
-    forall (v v': tt_set.t) (A: Type) (f: tup_type -> tt_set.t -> tt_set.t) (init: tt_set.t),
-      tt_set.Equal v v' ->
-      tt_set.Equal (tt_set.fold f v init) (tt_set.fold f v' init).
+    - simpl in H. destruct H.
+      + simpl. unfold set_fold_left.
+        eapply in_select_tuples_fold.
+        subst. rewrite <- H0. eapply set_add_intro2. reflexivity.
+      + simpl. unfold set_fold_left.
+        eapply IHv. eassumption. eassumption.
+  Qed.
+
+  Lemma in_select_tuples_fold'' :
+    forall (v: ListSet.set tup_type) (x: tup_type) var val,
+      List.In x
+        (set_fold_left
+           (fun (acc : set tup_type) (elmt : tup_type) =>
+            match select_tuples var val elmt with
+            | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+            | None => acc
+            end) v (empty_set tup_type)) ->
+      exists y,
+        List.In y v ->
+        Some x = select_tuples var val y.
   Proof.
-    intros v. destruct v. induction this0; intros.
-    - unfold tt_set.Equal in H. unfold tt_set.fold. unfold tt_set.Raw.fold. simpl.
-      destruct v'.
-      destruct this0.
-      + simpl. reflexivity.
-      + simpl.
-        specialize (H e).
-        destruct H.
-        assert (tt_set.In e {| tt_set.this := e :: this0; tt_set.is_ok := is_ok1 |}).
-        {
-          unfold tt_set.In. unfold tt_set.Raw.In. econstructor. reflexivity.
-        }
-        eapply H0 in H1. inversion H1.
-    - unfold tt_set.fold. unfold tt_set.Raw.fold. simpl.
-      inversion is_ok0. subst.
-      unfold tt_set.Raw.Ok in is_ok0.
-      specialize (IHthis0 H3).
-      destruct v'. destruct this1.
-      + simpl. unfold tt_set.Equal in H. unfold tt_set.In in H.
-        simpl in H. assert (tt_set.Raw.In a (a :: this0)) by (econstructor; reflexivity).
-        eapply H in H0. inversion H0.
-      + simpl. inversion is_ok1. subst.
-        specialize (IHthis0 {| tt_set.this := this1; tt_set.is_ok := H5 |}).
-        unfold tt_set.fold in IHthis0. unfold tt_set.Raw.fold in IHthis0. simpl in IHthis0.
-        unfold tt_set.Equal.
-        
-        admit.
+    induction v; intros.
+    inversion H.
+    admit.
   Admitted.
-        
 
-
+  Lemma in_select_tuples_fold' :
+    forall (v v0: ListSet.set tup_type) (x: tup_type),
+    forall var val,
+      List.In x (set_fold_left
+                 (fun (acc : set tup_type) (elmt : tup_type) =>
+                    match select_tuples var val elmt with
+                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+                    | None => acc
+                    end) v v0) ->
+      List.In x (set_fold_left (fun (acc : set tup_type) (elmt : tup_type) =>
+                    match select_tuples var val elmt with
+                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+                    | None => acc
+                    end) v (empty_set tup_type)) \/ List.In x v0.
+  Proof.
+    induction v; simpl; intros.
+    - right. eassumption.
+    - destruct (select_tuples var val a) eqn:S.
+      + eapply IHv in H. destruct H.
+        * left.
+          eapply in_select_tuples_fold2.
+          admit.
+  Admitted.
+  
   Lemma monotone_op_semantics_det' :
-    forall (m: monotone_ops) (g g': gm_type) (v v': tt_set.t),
+    forall (m: monotone_ops) (g g': gm_type) (v v': ListSet.set tup_type),
       ground_maps.Equal g g' ->
       monotone_op_semantics g m v ->
       monotone_op_semantics g' m v' ->
-      tt_set.Equal v v'.
+      (list_set_equal v v').
   Proof.
     induction m; unfold ground_maps.Equal; intros.
     - inversion H0.
     - inversion H0. inversion H1. subst.
       rewrite H in H4. rewrite H8 in H4. invs H4.
-      eapply tt_set_eq_refl. reflexivity.
+      eapply list_set_eq_refl. reflexivity.
     - invs H0. invs H1. specialize (IHm _ _ _ _ H H7 H8).
       
       unfold select_relation.
       unfold assign_vars_to_tuples in *.
+      simpl. intros. split; intros.
+      + unfold set_In, set_fold_left in *.
+        
+        
       admit.
   Admitted.
     
@@ -1044,54 +1045,15 @@ Module RelSemantics.
       Print r_meaning.
       Print e_meaning.
 
-      Let meaning' := Eval compute in (match meaning with
-                                       | Some m => program_semantics_eval_without_fixpoint m GraphProgram 2
-                                       | None => None
-                                       end).
-      Print meaning'.
-      Let r_meaning' := Eval compute in find_meaning meaning' "R".
-      Print r_meaning'.
-
-      (* Eval compute in (match meaning with *)
-      (*                  | Some m => Some (ground_maps.MapS.elements m) *)
-      (*                  | None => None *)
-      (*                  end). *)
-
-      (* Print ground_maps.MapS. *)
-
-      (* Let fresh_meaning := Eval compute in match r_meaning, e_meaning with *)
-      (*                      | Some r', Some e' => *)
-      (*                          Some (ground_maps.MapS.add "R" r' (ground_maps.MapS.add "E" e' (ground_maps.MapS.empty (list (list ground_types))))) *)
-      (*                      | _, _ => None *)
-      (*                      end. *)
-
-      (* (* Let fresh_meaning := match meaning with *) *)
-      (* (*                      | Some m => *) *)
-      (* (*                          Some (ground_maps.MapS.fold (fun key elmt acc => *) *)
-      (* (*                                               ground_maps.MapS.add key elmt acc) *) *)
-      (* (*                                                m *) *)
-      (* (*                                                (ground_maps.MapS.empty (list (list ground_types)))) *) *)
-      (* (*                      | None => None *) *)
-      (* (*                      end. *) *)
-
-      (* Let meaning' := Eval compute in (match fresh_meaning with *)
-      (*                                  | Some m => program_semantics_eval_single_iter m GraphProgram *)
+      (* Let meaning' := Eval compute in (match meaning with *)
+      (*                                  | Some m => program_semantics_eval_without_fixpoint m GraphProgram 2 *)
       (*                                  | None => None *)
       (*                                  end). *)
+      (* Print meaning'. *)
+      (* Let r_meaning' := Eval compute in find_meaning meaning' "R". *)
+      (* Print r_meaning'. *)
 
-      (* Let find_meaning' x := match meaning' with *)
-      (*                       | Some m => ground_maps.MapS.find x m *)
-      (*                       | None => None *)
-                            (* end. *)
-
-      (* Eval compute in (match find_meaning' "R" with *)
-      (*                  | Some m => *)
-      (*                      if Nat.leb 1 Datatypes.length m then *)
-      (*                        nth_error m 0 *)
-      (*                      else None *)
-      (*                  | None => None *)
-      (*                  end *)
-      (*                 ). *)
     End GraphEdges.
   End SemanticsExamples.
 End RelSemantics.
+

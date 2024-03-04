@@ -743,6 +743,119 @@ Module RelSemantics.
     intros. simpl. subst. split; intros; eauto.
   Qed.
 
+  Definition fold_left_fun_monotone_gen {A B: Type} (f: B -> A -> B) (B_to_set: B -> option (set tup_type)) :=
+    forall (a: A) (v': B),
+      match (B_to_set v'), (B_to_set (f v' a)) with
+      | Some v'', Some v''' => list_set_subset v'' v'''
+      | Some v'', None => False
+      | _, _ => True
+      end.
+  Arguments fold_left_fun_monotone_gen {A B}%type f B_to_set /.
+
+  Lemma set_fold_left_subset {A B: Type} :
+    forall (f: B -> A -> B) (B_to_set: B -> option (set tup_type)) (v: set A) (init: B),
+      fold_left_fun_monotone_gen f B_to_set ->
+      (* (forall (a: A) (v': B), match (B_to_set v'), (B_to_set (f v' a)) with *)
+      (*                    | Some v'', Some v''' => list_set_subset v'' v''' *)
+      (*                    | Some v'', None => False *)
+      (*                    | _, _ => True *)
+      (*                    end) -> *)
+      match (B_to_set init), (B_to_set ((set_fold_left f v init))) with
+      | Some i, Some s => list_set_subset i s
+      | _, _ => True
+      end.
+  Proof.
+    induction v; simpl; intros; simpl.
+    - simpl. destruct (B_to_set init) eqn:i; eauto.
+    - simpl. simpl in *.
+      specialize (IHv (f init a)).
+      specialize (IHv H). eauto.
+      specialize (H a init).
+      destruct (B_to_set init) eqn:I; destruct (B_to_set (set_fold_left f v (f init a))) eqn:I'; eauto.
+      destruct (B_to_set (f init a)) eqn:I''.
+      + intros. eapply IHv. eauto.
+      + inversion H.
+  Qed.
+
+  Definition option_list_subset {B: Type} (B_to_set: B -> option (set tup_type)) (s1 s2: B) :=
+    match (B_to_set s1), (B_to_set s2) with
+    | Some s1', Some s2' => list_set_subset s1' s2'
+    | _, _ => False
+    end.
+
+  Arguments option_list_subset {B}%type_scope B_to_set s1 s2 /.
+
+  (* Lemma option_fold_left_monotone {A B: Type} : *)
+  (*   forall (f: B -> A -> B) (B_to_set : B -> option (set tup_type)) (v: set A) (B_empty_set init: B), *)
+  (*     B_to_set B_empty_set = Some (empty_set tup_type) -> *)
+  (*   forall (x: tup_type), *)
+  (*     fold_left_fun_monotone_gen f B_to_set -> *)
+  (*     match B_to_set (set_fold_left f v init) with *)
+  (*     | Some b' => set_In x b' *)
+  (*     | _ => False *)
+  (*     end -> *)
+  (*     match B_to_set init with *)
+  (*     | Some init' => set_In x init' *)
+  (*     | _ => False *)
+  (*     end \/ *)
+  (*       match B_to_set (set_fold_left f v B_empty_set) with *)
+  (*       | Some b' => set_In x b' *)
+  (*       | _ => False *)
+  (*       end. *)
+  (* Proof. *)
+  (*   intros f B_to_set v. induction v; intros. *)
+  (*   - simpl in H1. destruct (B_to_set init) eqn:B'; try inversion H1. *)
+  (*     simpl in H0. *)
+  (*     destruct (B_to_set (set_fold_left f nil B_empty_set)) eqn:B''. *)
+  (*     + left. assumption. *)
+  (*     + left. assumption. *)
+  (*   - simpl in H1. simpl. eapply IHv with (B_empty_set := B_empty_set) in H1; try eassumption. *)
+  (*     destruct H1. *)
+  (*     + simpl. destruct (B_to_set (f init a)) eqn:B''; try inversion H1. *)
+  (*       simpl in H0. *)
+  (*       pose proof (H2 := H0 a init). *)
+  (*       specialize (H0 a init). *)
+  (*       destruct (B_to_set init). *)
+  (*       * rewrite B'' in H0.  *)
+  (* destruct (B_to_set init) eqn:B'. *)
+  
+  Definition fold_left_fun_monotone {A : Type} (f: set tup_type -> A -> set tup_type) :=
+    forall (a: A) (v: set tup_type),
+      list_set_subset v (f v a).
+
+  Lemma set_fold_left_subset' {A: Type} :
+    forall (f: set tup_type -> A -> set tup_type) (v: set A) (init: set tup_type),
+      fold_left_fun_monotone f ->
+      list_set_subset init (set_fold_left f v init).
+  Proof.
+    intros.
+    pose proof (set_fold_left_subset f (fun a => Some a)).
+    specialize (H0 v init).
+    simpl in H0.
+    unfold list_set_subset. intros. eapply H0. unfold fold_left_fun_monotone in H.
+    intros. eapply H. eassumption. eassumption.
+  Qed.
+
+
+  Arguments fold_left_fun_monotone {A}%type_scope f /.
+
+  Lemma select_tuples_fun_monotone :
+    forall var val,
+      fold_left_fun_monotone (fun (acc: set tup_type) (elmt: tup_type) =>
+                                match select_tuples var val elmt with
+                                | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+                                | None => acc
+                                end).
+  Proof.
+    intros. simpl. intros.
+    destruct (select_tuples var val a).
+    - eapply set_add_intro1. eassumption.
+    - eassumption.
+  Qed.
+
+  
+          
+
   Lemma in_select_tuples_fold :
     forall (v v0: ListSet.set tup_type) (x: tup_type),
     forall var val,
@@ -1010,26 +1123,6 @@ Module RelSemantics.
       
       Let GraphProgram := DlProgram idb_set edb_set Rxy (Rxy_rule1 :: Rxy_rule2 :: nil).
       Let monotones := Eval compute in rules_to_monotone_op (rules GraphProgram).
-
-      (* Let monotones' := *)
-      (*       Eval compute in *)
-      (*       List.fold_left *)
-      (*         (fun (acc: list (string * monotone_ops)) (elmt: string * (list (option monotone_ops))) => *)
-      (*            let (name, oms) := elmt in *)
-      (*            List.fold_left (fun (acc': list (string * monotone_ops)) *)
-      (*                              (elmt: option monotone_ops) => *)
-                                   
-      (*                              match elmt with *)
-      (*                              | Some m => *)
-      (*                                  (name, m) :: acc' *)
-      (*                              | None => *)
-      (*                                  acc *)
-      (*                              end) *)
-      (*                           oms *)
-      (*                           acc *)
-      (*         ) *)
-      (*         monotones *)
-      (*         nil. *)
 
       Let meaning := Eval compute in program_semantics_eval_without_fixpoint G' GraphProgram 2.
       Let find_meaning (meaning: option gm_type) x := match meaning with

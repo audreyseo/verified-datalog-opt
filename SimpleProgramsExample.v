@@ -89,7 +89,61 @@ prove result is same
 
     (* Let monotones := Eval compute in rules_to_monotone_op (rules program1). *)
     Import MoreOrders.
+ 
+    Lemma set_helper:
+    forall old_tuples ,
+    (ListSet.set_union
+                         List_Ground_Type_as_OTF.eq_dec
+                         (ListSet.empty_set
+                            List_Ground_Type_as_OTF.t)
+                         old_tuples) = old_tuples.
+    Proof.
+      admit.
+    Admitted.
 
+    Lemma map_same:
+    forall g,
+    (ground_maps.find (elt:=gt_set_type) "T"
+               (ground_maps.add "S"
+                  (ListSet.empty_set
+                     List_Ground_Type_as_OTF.t) g)) =
+    (ground_maps.find (elt:=gt_set_type) "T" g).
+    Proof.
+    admit.
+    Admitted.
+
+    Lemma map_in_means_find:
+    forall g,
+    ground_maps.In (elt:=gt_set_type) "T" g -> 
+    exists v, ground_maps.find (elt:=gt_set_type) "T" g = Some v.
+    Proof.
+    admit.
+    Admitted. 
+
+    Lemma assoc_list_emp:
+    forall v,
+    (forall x, In x v -> exists a b c, x = a::b::c::nil) ->
+    (fold_left
+              (fun (acc : ListSet.set str_gt_list_ot.t)
+                 (elmt : list ground_types) =>
+               match
+                 variable_list_groundings_to_assoc_list Tabc elmt
+               with
+               | Some l =>
+                   ListSet.set_add str_gt_list_ot.eq_dec l acc
+               | None => acc
+               end) v (ListSet.empty_set tup_type)) = nil.
+    Proof.
+      (* intros. unfold ListSet.empty_set. 
+      induction v. simpl; eauto.
+      simpl.
+      assert (In a (a::v)) by (simpl; eauto).
+      
+      specialize (H a H0). destruct H as (p & q & r & H).
+      rewrite H in *. simpl. *)
+      admit.
+      Admitted.
+      
     Lemma simple_programs_same :
       forall (fuel: nat) (g g' g'': gm_type),
         ground_maps.In "T" g ->
@@ -103,6 +157,25 @@ prove result is same
             ground_maps.find "S" g'' = Some v' ->
             In x v <-> In x v'.
     Proof.
+      unfold program1. unfold program2. intros. destruct fuel.
+      - unfold program_semantics_eval in *. simpl in *. inversion H2.
+      - destruct fuel. 
+        + exists 1. unfold program_semantics_eval in *. simpl in H2.
+          rewrite H0 in H2. simpl in H2.
+          rewrite H1 in H2. simpl in H2.
+          erewrite map_same in H2.
+          specialize (map_in_means_find g H). intro. destruct H3 as (v & H3).
+          rewrite H3 in H2.
+          (* Don't know what to do next *)
+          
+
+          destruct H2.
+
+          unfold ListSet.set_union in H2.
+          unfold ListSet.empty_set in H2. simpl in H2.
+        simpl in *. inversion H2.
+      intros. split; intro.
+      -  
       unfold program1. unfold program2. induction fuel; intros.
       - unfold program_semantics_eval in *. simpl in *. exists 1. inversion H2. 
       - unfold program_semantics_eval in *. simpl in *. exists 1. intros.

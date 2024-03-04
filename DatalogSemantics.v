@@ -717,6 +717,7 @@ Module RelSemantics.
     forall (g g' g'': gm_type) (rulez: list (string * rel * monotone_ops)),
       (* program_semantics g g' rulez g'' -> *)
       rule_semantics g rulez g' ->
+      ~ (ground_maps.Equal g g') ->
       program_semantics g' rulez g'' ->
       program_semantics g rulez g''.
 
@@ -898,6 +899,13 @@ Module RelSemantics.
         eapply IHv. eassumption. eassumption.
   Qed.
 
+  (* I wouldn't normally admit something like this, but if we don't run into any really terrible things...this might make it a bit easier. *)
+  Axiom ground_maps_equality :
+    forall (g g': gm_type),
+      ground_maps.Equal g g' ->
+      g = g'.
+ 
+
   Lemma in_select_tuples_fold'' :
     forall (v: ListSet.set tup_type) (x: tup_type) var val,
       List.In x
@@ -982,16 +990,26 @@ Module RelSemantics.
     forall (g g' g'': gm_type) (rulez: list (string * rel * monotone_ops)),
       program_semantics g rulez g' ->
       program_semantics g rulez g'' ->
-      ground_maps.Equal g' g''.
+      g' = g''.
   Proof.
     intros g g' g'' rulez P.
     revert g''. dependent induction P; intros.
     - inversion H1; subst.
-      + unfold ground_maps.Equal. intros; reflexivity.
-      + unfold ground_maps.Equal in *. intros. rewrite H0.
-        pose proof (rule_semantics_det _ _ _ _ H H2). subst.
-        admit.
-  Admitted.
+      + reflexivity.
+      + pose proof (rule_semantics_det _ _ _ _ H H2). subst.
+        eapply H3 in H0. inversion H0.
+    - invs H1.
+      + eapply ground_maps_equality in H3. subst.
+        pose proof (rule_semantics_det _ _ _ _ H2 H).
+        subst.
+        assert (ground_maps.Equal (elt:=gt_set_type) g' g') by (intros; split; intros; eauto).
+        eapply H0 in H3. contradiction.
+      + pose proof (rule_semantics_det _ _ _ _ H H2). subst.
+        eapply IHP.
+        eassumption.
+  Qed.
+
+
         
       
       
@@ -1086,6 +1104,76 @@ Module RelSemantics.
   Definition program_semantics_eval_without_fixpoint (g: gm_type) (p: program) (fuel: nat) : option gm_type :=
     let monotones' := program_to_monotone_ops p in
     run_program_without_fixpoint g monotones' fuel.
+
+  Lemma ground_maps_Equal_implies_equal :
+    forall (g g': gm_type),
+      ground_maps.Equal (elt:=gt_set_type) g g' <->
+      ground_maps.equal List_Ground_Type_as_OT.eqb g g' = true.
+  Proof.
+  Admitted.
+
+  Lemma ground_maps_NEqual_implies_nequal :
+    forall (g g': gm_type),
+      ~ ground_maps.Equal (elt:=gt_set_type) g g' <->
+      ground_maps.equal List_Ground_Type_as_OT.eqb g g' = false.
+  Proof.
+  Admitted.
+
+
+  Lemma program_semantics_adequacy' :
+    forall (rulez: list (string * rel * monotone_ops)) (g g': gm_type),
+      Forall
+        (fun elmt : OrdersEx.String_as_OT.t * rel * monotone_ops =>
+           let (y, _) := elmt in let (n, r) := y in n = name r) rulez ->
+
+      program_semantics g rulez g' ->
+      exists fuel,
+        program_semantics_eval_helper g rulez fuel = Some g'.
+  Proof.
+    intros rulez g g' F P.
+    dependent induction P; intros.
+    - exists 1. simpl.
+      eapply rule_semantics_adequacy in H; try eassumption. rewrite <- H.
+      eapply ground_maps_Equal_implies_equal in H0. rewrite H0. reflexivity.
+    - specialize (IHP F). destruct IHP as (fuel & IHP).
+      exists (S fuel).
+      simpl.
+      eapply rule_semantics_adequacy in H; eauto.
+      rewrite <- H.
+      eapply ground_maps_NEqual_implies_nequal in H0. rewrite H0.
+      eassumption.
+  Qed.
+
+  Lemma program_semantics_adequacy :
+    forall (fuel: nat) (rulez: list (string * rel * monotone_ops)) (g g': gm_type),
+      Forall
+        (fun elmt : OrdersEx.String_as_OT.t * rel * monotone_ops =>
+           let (y, _) := elmt in let (n, r) := y in n = name r) rulez ->
+
+        program_semantics_eval_helper g rulez fuel = Some g' ->
+        program_semantics g rulez g'.
+  Proof.
+    induction fuel; intros rulez g g' F P.
+    - simpl in P. inversion P.
+    - simpl in P.
+      symmetry in P. destruct_hyp_match.
+      destruct (ground_maps.equal List_Ground_Type_as_OT.eqb g g0) eqn:E.
+      + eapply ground_maps_Equal_implies_equal in E.
+        invc P.
+        eapply ground_maps_equality in E. subst.
+        econstructor. eapply rule_semantics_adequacy; eauto.
+        split; intros; eauto.
+      + eapply ground_maps_NEqual_implies_nequal in E.
+        eapply program_step_continue.
+        * eapply rule_semantics_adequacy; eauto.
+        * eassumption.
+        * eapply IHfuel; eauto.
+  Qed.
+      
+      
+      
+      
+      
       
 
   Definition program_semantics_eval
@@ -1095,6 +1183,7 @@ Module RelSemantics.
     let monotones' := program_to_monotone_ops p in
     let heads := get_heads (rules p) in
     program_semantics_eval_helper g monotones' fuel.
+
     
                       
   Section SemanticsExamples.

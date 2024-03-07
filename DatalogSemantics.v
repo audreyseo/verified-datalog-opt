@@ -6,6 +6,8 @@ Local Open Scope string_scope.
 Local Open Scope list_scope.
 Local Open Scope nat_scope.
 
+Ltac invs H := inversion H; subst.
+Ltac invc H := inversion H; subst; clear H.
 
 
 Module RelSemantics.
@@ -226,6 +228,7 @@ Module RelSemantics.
                       end)
                    pvs
                    (Some nil).
+  Arguments proj_tuples pvs assoc /.
 
   Definition select_tuples (n: string) (v: ground_types) (assoc: tup_type) :=
     List.fold_left (fun acc (elmt: string * ground_types) =>
@@ -237,7 +240,8 @@ Module RelSemantics.
                       else option_map (cons elmt) acc)
                    assoc
                    (Some nil).
-                                      
+
+  Arguments select_tuples n v assoc /.
   
   Definition join_tuples (jvs: list string) (assoc1 assoc2: list (string * ground_types)) :=
     if check_join_vars jvs assoc1 assoc2 then
@@ -277,6 +281,7 @@ Module RelSemantics.
       | _, _, _ => None
       end
     else None.
+  Arguments join_tuples jvs assoc1 assoc2 /.
   
   (* Definition tt_set_prod (v1 v2: ListSet.set tup_type) := *)
     (* list_prod (tt_set.elements v1) (tt_set.elements v2). *)
@@ -292,6 +297,7 @@ Module RelSemantics.
                            end)
                         (set_prod v1 v2)
                         (@empty_set tup_type).
+  Arguments join_relations jvs v1 v2 /.
 
   Definition select_relation_f (n: string) (g: ground_types) (acc: ListSet.set tup_type) (elmt: tup_type)  :=
     match select_tuples n g elmt with
@@ -317,6 +323,100 @@ Module RelSemantics.
                   (Some (@empty_set tup_type)).
 
   Arguments proj_relation / _ _.
+
+  Definition tup_empty_set := @empty_set tup_type.
+  Arguments tup_empty_set /.
+  Definition tup_set: Type := ListSet.set tup_type.
+  Arguments tup_set /.
+
+  (* Definition proj_tuples (pvs: list string) (assoc: tup_type) :=
+    List.fold_left (fun acc (elmt: string) =>
+                      match assoc_lookup assoc elmt with
+                      | Some gt => option_map (cons (elmt, gt)) acc
+                      | None => None
+                      end)
+                   pvs
+                   (Some nil). *)
+  Inductive assoc_lookup_rel : tup_type -> string -> ground_types -> Prop :=
+  | assoc_lookup_done :
+    forall (x: string) (elmt: ground_types) (assoc: tup_type),
+      assoc_lookup_rel ((x, elmt) :: assoc) x elmt
+  | assoc_lookup_continue :
+    forall (x y: string) (elmt elmt': ground_types) (assoc: tup_type),
+      x <> y ->
+      assoc_lookup_rel assoc y elmt' ->
+      assoc_lookup_rel ((x, elmt) :: assoc) y elmt'.
+
+  Lemma assoc_lookup_adequacy :
+    forall (tt: tup_type) (s: string) (g: ground_types),
+      assoc_lookup_rel tt s g <->
+        Some g = assoc_lookup tt s.
+  Proof.
+    induction tt; intros; split; intros.
+    - inversion H.
+    - inversion H.
+    - invs H.
+      + simpl. destruct (string_dec s s) eqn:H'; try congruence.
+      + simpl. destruct (string_dec s x) eqn:H'; try congruence.
+        eapply IHtt. eassumption.
+    - simpl in H. destruct a. destruct (string_dec s s0) eqn:H'; subst.
+      + invs H. econstructor.
+      + eapply assoc_lookup_continue. congruence. eapply IHtt; eauto.
+  Qed.
+  
+      
+  Inductive proj_tuples_rel : list string -> tup_type -> tup_type -> Prop :=
+  | proj_tuples_done :
+    forall (assoc: tup_type),
+    (* forall (t res: tup_type) (s: string) (g: ground_types), *)
+      (* assoc_lookup_rel t s g -> *)
+      proj_tuples_rel nil assoc nil 
+  | proj_tuples_step :
+    forall (pvs: list string) (assoc res: tup_type) (s: string) (g: ground_types),
+      assoc_lookup_rel assoc s g ->
+      proj_tuples_rel pvs assoc res ->
+      proj_tuples_rel (s :: pvs) assoc ((s, g) :: res).
+
+
+        
+  Definition list_set_subset {T: Type} (v v': ListSet.set T) :=
+    forall (x: T),
+      set_In x v -> set_In x v'.
+  Arguments list_set_subset {T}%type_scope v v'/.
+
+  Definition list_set_equal {T: Type} (v v': ListSet.set T) :=
+    forall (x: T),
+      set_In x v <-> set_In x v'.
+  Arguments list_set_equal {T}%type_scope v v' /.
+
+  Lemma list_set_eq_refl {T: Type}:
+    forall (v v': ListSet.set T),
+      v = v' ->
+      list_set_equal v v'.
+  Proof.
+    intros. simpl. subst. split; intros; eauto.
+  Qed.
+  Axiom list_set_equality :
+    forall (T: Type) (x1 x2: ListSet.set T),
+      list_set_equal x1 x2 ->
+      x1 = x2.
+  
+      
+
+  Inductive proj_relation_rel : list string -> tup_set -> tup_set -> Prop :=
+  | proj_rel_nil :
+    forall (pvs: list string),
+      proj_relation_rel pvs tup_empty_set tup_empty_set
+  | proj_rel_cons_skip :
+    forall (pvs: list string) (s: string) (t' t'': tup_type) (t1 t2: tup_set),
+      proj_tuples_rel pvs t' t'' ->
+      proj_relation_rel pvs t1 t2 ->
+      proj_relation_rel pvs (t' :: t1) (t'' :: t2).
+
+  Print proj_relation.
+
+        
+                                
 
   Definition assign_vars_to_tuples (R: rel) (v: list (list ground_types)) :=
     List.fold_left (fun acc elmt =>
@@ -407,102 +507,7 @@ Module RelSemantics.
         end
     end.
 
-  Lemma monotone_op_semantics_det :
-    forall (m: monotone_ops) (g: gm_type) (v v': ListSet.set tup_type),
-      monotone_op_semantics g m v ->
-      monotone_op_semantics g m v' ->
-      v = v'.
-  Proof.
-    induction m; intros.
-    - inversion H.
-    - inversion H. inversion H0. subst.
-      rewrite H7 in H3. inversion H3. reflexivity.
-    - inversion H. inversion H0. subst.
-      f_equal. eapply IHm; eassumption.
-    - inversion H. inversion H0. subst. f_equal; eauto.
-    - inversion H. inversion H0. subst.
-      specialize (IHm _ _ _ H4 H10). subst. rewrite H12 in H6. inversion H6. reflexivity.
-    - inversion H. inversion H0. subst.
-      f_equal; eauto.
-  Qed.
-
-  Lemma monotone_op_semantics_adequacy :
-    forall (m: monotone_ops) (g: gm_type) (v: ListSet.set tup_type),
-      Some v = monotone_op_semantics_eval g m <->
-        monotone_op_semantics g m v.
-  Proof.
-    induction m; intros; split; intros.
-    - simpl in H. inversion H.
-    - inversion H.
-    - simpl in H.
-      match goal with
-      | [ H: Some _ = match ?x with | Some v => _ | None => None end |- _ ] =>
-          destruct (x) eqn:X; inversion H
-      end.
-      econstructor. eassumption.
-    - inversion H. simpl. rewrite H2. reflexivity.
-    - simpl in H.
-      Ltac destruct_hyp_match :=
-        match goal with
-        | [H: Some _ = match ?x with | Some _ => _ | None => None end |- _ ] =>
-            let Xfresh := fresh "X" in
-            destruct (x) eqn:Xfresh; inversion H
-        end.
-      destruct_hyp_match.
-      symmetry in X. eapply IHm in X.
-      econstructor; eauto.
-    - Ltac destruct_goal_match :=
-        match goal with
-        | [ |- Some _ = match ?x with | Some _ => _ | None => None end ] =>
-            let Xfresh := fresh "X" in
-            destruct (x) eqn:Xfresh; subst
-        end.
-      simpl. destruct_goal_match.
-      + inversion H. subst. eapply IHm in H5.
-        rewrite <- H5 in X. inversion X. reflexivity.
-      + inversion H. subst. eapply IHm in H5. rewrite X in H5. congruence.
-    - simpl in H.
-      match goal with
-      | [H: Some _ = match ?x with | Some _ => _ | None => None end |- _ ] =>
-          destruct (x) eqn:X; inversion H
-      end.
-      
-      destruct_hyp_match.
-      subst.
-      econstructor; eauto.
-      eapply IHm1. congruence.
-      eapply IHm2. congruence.
-    - inversion H. subst. simpl.
-      
-
-      destruct_goal_match.
-      + destruct_goal_match.
-        * f_equal. eapply IHm1 in H2. eapply IHm2 in H4.
-          rewrite <- H2 in X. rewrite <- H4 in X0.
-          inversion X. inversion X0. reflexivity.
-        * eapply IHm2 in H4. rewrite <- H4 in X0. inversion X0.
-      + eapply IHm1 in H2. rewrite <- H2 in X. inversion X.
-    - simpl in H. destruct_hyp_match.
-      econstructor. eapply IHm. symmetry. eassumption. simpl. 
-      congruence.
-    - simpl. inversion H. subst. destruct_goal_match.
-      symmetry in X.
-      eapply IHm in X.
-      pose proof (monotone_op_semantics_det _ _ _ _ H3 X). subst.
-      simpl in *.
-      congruence.
-      eapply IHm in H3. rewrite X in H3. congruence.
-    - simpl in H. destruct_hyp_match. destruct_hyp_match.
-      econstructor; eauto.
-      eapply IHm1. congruence.
-      eapply IHm2. congruence.
-    - inversion H. subst. eapply IHm1 in H4. eapply IHm2 in H6.
-      simpl. rewrite <- H4. rewrite <- H6. reflexivity.
-  Qed.
-
   
-  (* Eval compute in ground_maps.t. *)
-
   Fixpoint anonymize_tuple
            (names: list string)
            (t: tup_type) : option (list ground_types) :=
@@ -643,69 +648,7 @@ Module RelSemantics.
         else rule_semantics_eval' g rst_rules
     end.
 
-  Lemma rule_semantics_det :
-    forall (rules: list (string * rel * monotone_ops)) (g g1 g2: gm_type),
-      rule_semantics g rules g1 ->
-      rule_semantics g rules g2 ->
-      g1 = g2.
-  Proof.
-    induction rules; intros.
-    - inversion H. inversion H0. subst. reflexivity.
-    - inversion H. subst. inversion H0. subst.
-      eapply IHrules. eassumption.
-      epose proof (monotone_op_semantics_det _ _ _ _ H4 H9).
-      subst.
-      rewrite <- H5 in H12. inversion H12. subst.
-      rewrite <- H6 in H14. inversion H14. subst. eassumption.
-  Qed.
-
-  Lemma rule_semantics_adequacy :
-    forall (rules: list (string * rel * monotone_ops)) (g g': gm_type),
-      Forall (fun elmt =>
-                match elmt with
-                | (n, r, m) => n = name r
-                end) rules ->
-      Some g' = rule_semantics_eval' g rules <->
-        rule_semantics g rules g'.
-  Proof.
-    induction rules; intros; split; intros.
-    - inversion H0. econstructor.
-    - inversion H0. subst. reflexivity.
-    - simpl in H0. destruct a.  destruct p. destruct (string_dec (name r) s).
-      + destruct_hyp_match. destruct_hyp_match.
-        destruct_hyp_match.
-        econstructor. eassumption.
-        eapply monotone_op_semantics_adequacy. symmetry in X. eassumption.
-        symmetry in X0. eassumption.
-        
-        3: eapply IHrules in H3; inversion H; try eassumption.
-        2: reflexivity.
-        symmetry in X1. eassumption.
-      + inversion H. congruence.
-    - inversion H0. subst. inversion H. subst.
-      simpl. destruct (string_dec (name R) (name R)); try congruence.
-      clear e.
-      destruct_goal_match.
-      + destruct_goal_match.
-        * destruct_goal_match.
-          -- eapply IHrules in H10.
-             eapply monotone_op_semantics_adequacy in H4.
-             rewrite <- H4 in X. inversion X. subst.
-             clear X. rewrite X0 in H5. inversion H5. subst.
-             inversion H6. subst. eassumption.
-             eassumption.
-          -- inversion H6.
-        * eapply monotone_op_semantics_adequacy in H4. rewrite X in H4. inversion H4. subst. rewrite X0 in H5. congruence.
-      + eapply monotone_op_semantics_adequacy in H4. rewrite X in H4. congruence.
-  Qed.
-
-  (* States of reaching fixpoint:
-     have fuel -> run another iter -> maps are the same -> end
-                                   -> maps are not the same -> continue
-     don't have fuel -> fail
-
-
-   *)
+  
 
   Inductive program_semantics : gm_type -> list (string * rel * monotone_ops) -> gm_type -> Prop :=
   | program_step_done :
@@ -722,27 +665,10 @@ Module RelSemantics.
       program_semantics g rulez g''.
 
 
-  Ltac invs H := inversion H; subst.
-  Ltac invc H := inversion H; subst; clear H.
 
 
-  Definition list_set_subset {T: Type} (v v': ListSet.set T) :=
-    forall (x: T),
-      set_In x v -> set_In x v'.
-  Arguments list_set_subset {T}%type_scope v v'/.
 
-  Definition list_set_equal {T: Type} (v v': ListSet.set T) :=
-    forall (x: T),
-      set_In x v <-> set_In x v'.
-  Arguments list_set_equal {T}%type_scope v v' /.
-
-  Lemma list_set_eq_refl {T: Type}:
-    forall (v v': ListSet.set T),
-      v = v' ->
-      list_set_equal v v'.
-  Proof.
-    intros. simpl. subst. split; intros; eauto.
-  Qed.
+  
 
   Definition fold_left_fun_monotone_gen {A B: Type} (f: B -> A -> B) (B_to_set: B -> option (set tup_type)) :=
     forall (a: A) (v': B),
@@ -753,31 +679,7 @@ Module RelSemantics.
       end.
   Arguments fold_left_fun_monotone_gen {A B}%type f B_to_set /.
 
-  Lemma set_fold_left_subset {A B: Type} :
-    forall (f: B -> A -> B) (B_to_set: B -> option (set tup_type)) (v: set A) (init: B),
-      fold_left_fun_monotone_gen f B_to_set ->
-      (* (forall (a: A) (v': B), match (B_to_set v'), (B_to_set (f v' a)) with *)
-      (*                    | Some v'', Some v''' => list_set_subset v'' v''' *)
-      (*                    | Some v'', None => False *)
-      (*                    | _, _ => True *)
-      (*                    end) -> *)
-      match (B_to_set init), (B_to_set ((set_fold_left f v init))) with
-      | Some i, Some s => list_set_subset i s
-      | _, _ => True
-      end.
-  Proof.
-    induction v; simpl; intros; simpl.
-    - simpl. destruct (B_to_set init) eqn:i; eauto.
-    - simpl. simpl in *.
-      specialize (IHv (f init a)).
-      specialize (IHv H). eauto.
-      specialize (H a init).
-      destruct (B_to_set init) eqn:I; destruct (B_to_set (set_fold_left f v (f init a))) eqn:I'; eauto.
-      destruct (B_to_set (f init a)) eqn:I''.
-      + intros. eapply IHv. eauto.
-      + inversion H.
-  Qed.
-
+  
   Definition option_list_subset {B: Type} (B_to_set: B -> option (set tup_type)) (s1 s2: B) :=
     match (B_to_set s1), (B_to_set s2) with
     | Some s1', Some s2' => list_set_subset s1' s2'
@@ -824,191 +726,11 @@ Module RelSemantics.
     forall (a: A) (v: set tup_type),
       list_set_subset v (f v a).
 
-  Lemma set_fold_left_subset' {A: Type} :
-    forall (f: set tup_type -> A -> set tup_type) (v: set A) (init: set tup_type),
-      fold_left_fun_monotone f ->
-      list_set_subset init (set_fold_left f v init).
-  Proof.
-    intros.
-    pose proof (set_fold_left_subset f (fun a => Some a)).
-    specialize (H0 v init).
-    simpl in H0.
-    unfold list_set_subset. intros. eapply H0. unfold fold_left_fun_monotone in H.
-    intros. eapply H. eassumption. eassumption.
-  Qed.
-
+  
 
   Arguments fold_left_fun_monotone {A}%type_scope f /.
 
-  Lemma select_tuples_fun_monotone :
-    forall var val,
-      fold_left_fun_monotone (fun (acc: set tup_type) (elmt: tup_type) =>
-                                match select_tuples var val elmt with
-                                | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                                | None => acc
-                                end).
-  Proof.
-    intros. simpl. intros.
-    destruct (select_tuples var val a).
-    - eapply set_add_intro1. eassumption.
-    - eassumption.
-  Qed.
-
   
-          
-
-  Lemma in_select_tuples_fold :
-    forall (v v0: ListSet.set tup_type) (x: tup_type),
-    forall var val,
-      List.In x v0 ->
-      List.In x
-              (set_fold_left
-                 (fun (acc : set tup_type) (elmt : tup_type) =>
-                    match select_tuples var val elmt with
-                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                    | None => acc
-                    end) v v0).
-  Proof.
-    induction v; intros.
-    - simpl. eassumption.
-    - simpl. eapply IHv.
-      destruct (select_tuples var val a) eqn:S.
-      + eapply set_add_intro1. eassumption.
-      + eassumption.
-  Qed.
-
-  Lemma in_select_tuples_fold2 :
-    forall (v v0: ListSet.set tup_type) (x: tup_type),
-    forall var val tup,
-      List.In x v ->
-      Some tup = select_tuples var val x ->
-      List.In tup (set_fold_left
-                 (fun (acc : set tup_type) (elmt : tup_type) =>
-                    match select_tuples var val elmt with
-                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                    | None => acc
-                    end) v v0).
-  Proof.
-    induction v; intros.
-    - inversion H.
-    - simpl in H. destruct H.
-      + simpl. unfold set_fold_left.
-        eapply in_select_tuples_fold.
-        subst. rewrite <- H0. eapply set_add_intro2. reflexivity.
-      + simpl. unfold set_fold_left.
-        eapply IHv. eassumption. eassumption.
-  Qed.
-
-  (* I wouldn't normally admit something like this, but if we don't run into any really terrible things...this might make it a bit easier. *)
-  Axiom ground_maps_equality :
-    forall (g g': gm_type),
-      ground_maps.Equal g g' ->
-      g = g'.
- 
-
-  Lemma in_select_tuples_fold'' :
-    forall (v: ListSet.set tup_type) (x: tup_type) var val,
-      List.In x
-        (set_fold_left
-           (fun (acc : set tup_type) (elmt : tup_type) =>
-            match select_tuples var val elmt with
-            | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-            | None => acc
-            end) v (empty_set tup_type)) ->
-      exists y,
-        List.In y v ->
-        Some x = select_tuples var val y.
-  Proof.
-    induction v; intros.
-    inversion H.
-    admit.
-  Admitted.
-
-  Lemma in_select_tuples_fold' :
-    forall (v v0: ListSet.set tup_type) (x: tup_type),
-    forall var val,
-      List.In x (set_fold_left
-                 (fun (acc : set tup_type) (elmt : tup_type) =>
-                    match select_tuples var val elmt with
-                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                    | None => acc
-                    end) v v0) ->
-      List.In x (set_fold_left (fun (acc : set tup_type) (elmt : tup_type) =>
-                    match select_tuples var val elmt with
-                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                    | None => acc
-                    end) v (empty_set tup_type)) \/ List.In x v0.
-  Proof.
-    induction v; simpl; intros.
-    - right. eassumption.
-    - destruct (select_tuples var val a) eqn:S.
-      + eapply IHv in H. destruct H.
-        * left.
-          eapply in_select_tuples_fold2.
-          admit.
-  Admitted.
-  
-  Lemma monotone_op_semantics_det' :
-    forall (m: monotone_ops) (g g': gm_type) (v v': ListSet.set tup_type),
-      ground_maps.Equal g g' ->
-      monotone_op_semantics g m v ->
-      monotone_op_semantics g' m v' ->
-      (list_set_equal v v').
-  Proof.
-    induction m; unfold ground_maps.Equal; intros.
-    - inversion H0.
-    - inversion H0. inversion H1. subst.
-      rewrite H in H4. rewrite H8 in H4. invs H4.
-      eapply list_set_eq_refl. reflexivity.
-    - invs H0. invs H1. specialize (IHm _ _ _ _ H H7 H8).
-      
-      unfold select_relation.
-      unfold assign_vars_to_tuples in *.
-      simpl. intros. split; intros.
-      + unfold set_In, set_fold_left in *.
-        
-        
-      admit.
-  Admitted.
-    
-
-  Lemma rule_semantics_det' :
-    forall (rulez: list (string * rel * monotone_ops)) (g g' g0 g0': gm_type),
-      ground_maps.Equal g g' ->
-      rule_semantics g rulez g0 ->
-      rule_semantics g' rulez g0' ->
-      ground_maps.Equal g0 g0'.
-  Proof.
-    induction rulez; intros.
-    - inversion H0. inversion H1. subst. eassumption.
-    - inversion H0. inversion H1. subst. inversion H12; subst; clear H12.
-      admit.
-  Admitted.
-      
-
-  Lemma program_semantics_det :
-    forall (g g' g'': gm_type) (rulez: list (string * rel * monotone_ops)),
-      program_semantics g rulez g' ->
-      program_semantics g rulez g'' ->
-      g' = g''.
-  Proof.
-    intros g g' g'' rulez P.
-    revert g''. dependent induction P; intros.
-    - inversion H1; subst.
-      + reflexivity.
-      + pose proof (rule_semantics_det _ _ _ _ H H2). subst.
-        eapply H3 in H0. inversion H0.
-    - invs H1.
-      + eapply ground_maps_equality in H3. subst.
-        pose proof (rule_semantics_det _ _ _ _ H2 H).
-        subst.
-        assert (ground_maps.Equal (elt:=gt_set_type) g' g') by (intros; split; intros; eauto).
-        eapply H0 in H3. contradiction.
-      + pose proof (rule_semantics_det _ _ _ _ H H2). subst.
-        eapply IHP.
-        eassumption.
-  Qed.
-
 
         
       
@@ -1105,73 +827,28 @@ Module RelSemantics.
     let monotones' := program_to_monotone_ops p in
     run_program_without_fixpoint g monotones' fuel.
 
-  Lemma ground_maps_Equal_implies_equal :
-    forall (g g': gm_type),
-      ground_maps.Equal (elt:=gt_set_type) g g' <->
-      ground_maps.equal List_Ground_Type_as_OT.eqb g g' = true.
-  Proof.
-  Admitted.
+  
+  Definition ground_map_Subset (g1 g2: gm_type) :=
+    (forall (x: string),
+        ground_maps.In x g1 ->
+        ground_maps.In x g2) /\
+      (forall (x: string) (l1 l2: List_Ground_Type_as_OT.t),
+          ground_maps.find x g1 = Some l1 ->
+          ground_maps.find x g2 = Some l2 ->
+          list_set_subset l1 l2).
+  Arguments ground_map_Subset g1 g2 /.
 
-  Lemma ground_maps_NEqual_implies_nequal :
-    forall (g g': gm_type),
-      ~ ground_maps.Equal (elt:=gt_set_type) g g' <->
-      ground_maps.equal List_Ground_Type_as_OT.eqb g g' = false.
-  Proof.
-  Admitted.
-
-
-  Lemma program_semantics_adequacy' :
-    forall (rulez: list (string * rel * monotone_ops)) (g g': gm_type),
-      Forall
-        (fun elmt : OrdersEx.String_as_OT.t * rel * monotone_ops =>
-           let (y, _) := elmt in let (n, r) := y in n = name r) rulez ->
-
-      program_semantics g rulez g' ->
-      exists fuel,
-        program_semantics_eval_helper g rulez fuel = Some g'.
-  Proof.
-    intros rulez g g' F P.
-    dependent induction P; intros.
-    - exists 1. simpl.
-      eapply rule_semantics_adequacy in H; try eassumption. rewrite <- H.
-      eapply ground_maps_Equal_implies_equal in H0. rewrite H0. reflexivity.
-    - specialize (IHP F). destruct IHP as (fuel & IHP).
-      exists (S fuel).
-      simpl.
-      eapply rule_semantics_adequacy in H; eauto.
-      rewrite <- H.
-      eapply ground_maps_NEqual_implies_nequal in H0. rewrite H0.
-      eassumption.
-  Qed.
-
-  Lemma program_semantics_adequacy :
-    forall (fuel: nat) (rulez: list (string * rel * monotone_ops)) (g g': gm_type),
-      Forall
-        (fun elmt : OrdersEx.String_as_OT.t * rel * monotone_ops =>
-           let (y, _) := elmt in let (n, r) := y in n = name r) rulez ->
-
-        program_semantics_eval_helper g rulez fuel = Some g' ->
-        program_semantics g rulez g'.
-  Proof.
-    induction fuel; intros rulez g g' F P.
-    - simpl in P. inversion P.
-    - simpl in P.
-      symmetry in P. destruct_hyp_match.
-      destruct (ground_maps.equal List_Ground_Type_as_OT.eqb g g0) eqn:E.
-      + eapply ground_maps_Equal_implies_equal in E.
-        invc P.
-        eapply ground_maps_equality in E. subst.
-        econstructor. eapply rule_semantics_adequacy; eauto.
-        split; intros; eauto.
-      + eapply ground_maps_NEqual_implies_nequal in E.
-        eapply program_step_continue.
-        * eapply rule_semantics_adequacy; eauto.
-        * eassumption.
-        * eapply IHfuel; eauto.
-  Qed.
+  
+  Fixpoint assoc_lookup_gen {T: Type} (l: list (string * T)) (s: string) : option T :=
+        match l with
+        | nil => None
+        | (hd1, hd2) :: tl =>
+            if string_dec hd1 s then
+              Some hd2
+            else assoc_lookup_gen tl s
+        end.
       
-      
-      
+        
       
       
       
@@ -1214,26 +891,33 @@ Module RelSemantics.
       Let monotones := Eval compute in rules_to_monotone_op (rules GraphProgram).
 
       Let meaning := Eval compute in program_semantics_eval_without_fixpoint G' GraphProgram 2.
-      Let find_meaning (meaning: option gm_type) x := match meaning with
-                            | Some m => ground_maps.find x m
-                            | None => None
-                                                      end.
 
-      Print meaning.
+
+      
+            
+      
+      Let find_meaning (meaning: option gm_type) x :=
+            Eval compute in
+            match meaning with
+            | Some m => assoc_lookup_gen (ground_maps.this m) x
+            | None => None
+            end.
+
+      (* Print meaning. *)
 
       Let r_meaning := Eval compute in find_meaning meaning "R".
       Let e_meaning := Eval compute in find_meaning meaning "E".
+      Transparent proj_tuples.
+      Eval compute in r_meaning.
+      Eval compute in e_meaning.
 
-      Print r_meaning.
-      Print e_meaning.
-
-      (* Let meaning' := Eval compute in (match meaning with *)
-      (*                                  | Some m => program_semantics_eval_without_fixpoint m GraphProgram 2 *)
-      (*                                  | None => None *)
-      (*                                  end). *)
-      (* Print meaning'. *)
-      (* Let r_meaning' := Eval compute in find_meaning meaning' "R". *)
-      (* Print r_meaning'. *)
+      Let meaning' := Eval compute in (match meaning with
+                                       | Some m => program_semantics_eval_without_fixpoint m GraphProgram 1
+                                       | None => None
+                                       end).
+      Print meaning'.
+      Let r_meaning' := Eval compute in find_meaning meaning' "R".
+      Eval compute in r_meaning'.
 
     End GraphEdges.
   End SemanticsExamples.

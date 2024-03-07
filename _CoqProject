@@ -10,4 +10,8 @@
 ./OrderedGroundTypes.v
 ./RelDecidable.v
 ./DatalogSemantics.v
+./MonotoneOpSemanticsTheorems.v
+./RuleSemanticsTheorems.v
 ./UIPList.v
+./MonotonicityTheorems.v
+./GroundMapsHelpers.v

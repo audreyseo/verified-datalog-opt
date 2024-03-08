@@ -365,51 +365,6 @@ Proof.
 Qed.
 
 
-(* Lemma set_inter_comm {A: Type} : *)
-(*   forall (Aeq_dec: forall (a1 a2: A), {a1 = a2} + {a1 <> a2}) a b, *)
-(*     set_inter Aeq_dec a b = set_inter Aeq_dec b a. *)
-(* Proof. *)
-(*   induction a; intros. *)
-(*   - induction b; eauto. *)
-(*   - induction b. simpl. rewrite IHa. reflexivity. *)
-(*     simpl; destruct (set_mem Aeq_dec a b) eqn:S. *)
-(*     +  *)
-(*       destruct (Aeq_dec a a1); destruct (Aeq_dec a1 a); try congruence. *)
-(*       * subst. rewrite <- IHb. *)
-(*         f_equal. *)
-(*         eapply list_set_equality. *)
-(*         simpl. intros; split; intros. *)
-(*         -- destruct (set_mem Aeq_dec a1 b). *)
-(*            ++ rewrite IHa in H. simpl in H. *)
-(*               destruct (set_mem Aeq_dec a1 a0) eqn:A'. *)
-(*               ** rewrite <- IHa in H. eassumption. *)
-(*               ** rewrite <- IHa in H. *)
-(*                  unfold set_In in *. *)
-(*                  simpl. right. eassumption. *)
-(*            ++ inversion S. *)
-(*         -- rewrite S in H. simpl in IHb. rewrite S in IHb. rewrite IHb in H. *)
-(*            rewrite IHa. simpl. destruct (set_mem Aeq_dec a1 a0) eqn:A'. *)
-(*            ++ rewrite <- IHb in H. rewrite IHa in H. eassumption. *)
-(*            ++ rewrite <- IHb in H. simpl in H. destruct H. *)
-(*               ** subst. *)
-(*         simpl. symmetry. *)
-(*         rewrite S. *)
-(*         symmetry. rewrite IHa. *)
-(*         simpl. *)
-(*         symmetry. *)
-
-
-(*       revert S. *)
-
-
-
-(*       * simpl. inversion S. *)
-(*       * simpl in S. *)
-(*         destruct (Aeq_dec a a1) eqn:A1. *)
-(*         -- subst. simpl. rewrite A1. *)
-
-
-
 Lemma set_inter_elements {A: Type} :
   forall (Aeq_dec : forall (a1 a2: A), { a1 = a2 } + { a1 <> a2 }) l1 l2 a,
     set_In a (set_inter Aeq_dec l1 l2) <->
@@ -525,10 +480,40 @@ Proof.
       * inversion H3.
 Qed.
 
+Lemma proj_relation_fold_Some :
+  forall v pvs v' init,
+    Some v' =
+      set_fold_left
+        (fun (acc : option (set tup_type)) (elmt : tup_type) =>
+           match proj_tuples pvs elmt with
+           | Some tup => option_map (set_add str_gt_list_ot.eq_dec tup) acc
+           | None => None
+           end) v (Some init) ->
+    exists v'',
+      Some v'' = proj_relation pvs v.
+Proof.
+Admitted.
+
+Lemma proj_relation_fold_None :
+  forall v pvs,
+    set_fold_left
+      (fun (acc : option (set tup_type)) (elmt : tup_type) =>
+         match proj_tuples pvs elmt with
+         | Some tup => option_map (set_add str_gt_list_ot.eq_dec tup) acc
+         | None => None
+         end) v None = None.
+Proof.
+  induction v; intros.
+  - simpl. reflexivity.
+  - simpl. destruct (proj_tuples pvs a); eauto.
+Qed.
+
+
+
 Lemma proj_relation_fold :
   forall (v v' init: tup_set) (pvs: list string),
     Some v' = proj_relation pvs v ->
-    set_inter (str_gt_list_ot.eq_dec) v' init = empty_set str_gt_list_ot.t ->
+    (* set_inter (str_gt_list_ot.eq_dec) v' init = empty_set str_gt_list_ot.t -> *)
     set_fold_left (fun (acc : option (set tup_type)) (elmt : tup_type) =>
                      match proj_tuples pvs elmt with
                      | Some tup => option_map (set_add str_gt_list_ot.eq_dec tup) acc
@@ -544,177 +529,197 @@ Lemma proj_relation_fold :
       end.
 Proof.
   induction v; intros.
-  - simpl. unfold empty_set. rewrite app_nil_r. reflexivity.
+  - simpl. unfold empty_set.
+    rewrite app_nil_r. eauto.
   - Opaque proj_tuples. simpl.
-    destruct (proj_tuples pvs a) eqn:P.
-    + pose proof (PJ := H). simpl in H. rewrite P in H.
-      unfold tup_type in *.
-      destruct (proj_relation pvs v) eqn:J.
-      * erewrite IHv in H.
-        -- simpl in J. unfold tup_type in *. rewrite J in H.
-           erewrite IHv.
-           erewrite IHv.
-           rewrite J. erewrite IHv. rewrite J.
-           simpl. f_equal.
-           eapply list_set_equality.
-           simpl. intros; split; intros.
-           eapply in_app_or in H1.
-           destruct H1.
-           ++ eapply set_add_elim in H1. destruct H1.
-              eapply in_or_app. right. simpl. left. congruence.
-              eapply in_or_app. left. eassumption.
-           ++ eapply in_or_app. right. simpl. right. eassumption.
-           ++ eapply in_or_app.
-              eapply in_app_or in H1. destruct H1.
-              ** left. eapply set_add_intro1.
-                 eassumption.
-              ** simpl in H1. destruct H1.
-                 --- subst. left. eapply set_add_intro2. reflexivity.
-                 --- right. eassumption.
-           ++ simpl.
-Admitted.
-(*      erewrite <- proj_relation_init. *)
-(*      rewrite <- app_assoc. simpl. reflexivity. *)
-(*      eassumption. *)
-(*      eassumption. *)
-(*      eassumption. *)
-(*      symmetry. eauto. *)
-
-
-
-(* erewrite IHv. *)
-(* symmetry. erewrite IHv. symmetry. *)
-(* symmetry. destruct_match_goal'. *)
-(* * rewrite app_assoc. f_equal. f_equal. *)
-(*   eapply proj_relation_init. eassumption. eassumption. *)
-(*   eassumption. *)
-(* * reflexivity. *)
-(* * simpl in H. rewrite P in H. erewrite IHv in H; eauto. *)
-(*   fold (proj_relation pvs v) in H. *)
-(*   destruct (proj_relation pvs v).  *)
+    simpl in H.
+    destruct (proj_tuples pvs a).
+    + rewrite <- H.
+      pose proof (PROJ := proj_relation_fold_Some).
+      specialize (PROJ v pvs v' (l :: nil) H).
+      destruct PROJ as (v'' & PROJ).
+      erewrite IHv; eauto.
+      destruct (set_fold_left
+                  (fun (acc : option (set tup_type)) (elmt : tup_type) =>
+                     match proj_tuples pvs elmt with
+                     | Some tup => option_map (set_add str_gt_list_ot.eq_dec tup) acc
+                     | None => None
+                     end) v (Some (empty_set tup_type))) eqn:F.
+      -- f_equal.
+         eapply list_set_equality.
+         simpl. intros.
+         split; intros.
+         ++ eapply in_app_or in H0.
+            eapply in_or_app.
+            destruct H0.
+            ** eapply set_add_elim in H0.
+               destruct H0; subst.
+               --- right.
+                   erewrite IHv in H.
+                   rewrite F in H. invs H. left. eauto.
+                   symmetry in F. eapply F.
+               --- left. eauto.
+            ** erewrite IHv in H. rewrite F in H. invs H. right. right. eauto.
+               symmetry in F. eapply F.
+         ++ eapply in_app_or in H0. eapply in_or_app.
+            destruct H0.
+            ** left. eapply set_add_iff. right. eauto.
+            ** erewrite IHv in H. rewrite F in H.
+               invs H.
+               invs H0.
+               --- left. eapply set_add_iff. left. eauto.
+               --- right. eauto.
+               --- symmetry in F. eauto.
+      -- pose proof (proj_relation_fold_Some).
+         specialize (H0 v pvs v' (l :: nil)).
+         specialize (H0 H).
+         destruct H0.
+         erewrite IHv in H. rewrite F in H. invs H.
+         eapply proj_relation_fold_Some in H.
+         eapply H0.
+    + rewrite proj_relation_fold_None. reflexivity.
+Qed.
 
 
 Lemma proj_relation_adequacy :
   forall (t1 t2: tup_set)  (pvs: list string),
     proj_relation_rel pvs t1 t2 <->
-      Some (rev (map (@rev (string * ground_types)) t2)) = proj_relation pvs t1.
+      Some (map (@rev (string * ground_types)) t2) = proj_relation pvs t1.
 Proof.
-  induction t1; intros; split; intros.
-  - inversion H. simpl. reflexivity.
-  - simpl in H. invs H. unfold empty_set in H1.
-    eapply rev_eq_nil in H1.
-    destruct t2. simpl in H1. econstructor.
-    simpl in H1. invs H1.
-  - invs H.
-    eapply IHt1 in H5.
-    remember (proj_relation pvs (a :: t1)) as temp.
-    simpl. subst.
-    rewrite Some_append. rewrite H5.
-    eapply proj_tuples_adequacy in H3.
-    Opaque proj_tuples.
-    simpl.
-    rewrite <- H3.
-    unfold set_fold_left.
-    unfold empty_set.
-    
-    (* rewrit *)
-
-Admitted.
+  split.
+  - intros P. induction P; intros.
+    + simpl. reflexivity.
+    + simpl.
+      eapply proj_tuples_adequacy in H. rewrite <- H.
+      symmetry.
+      erewrite proj_relation_fold; eauto.
+      fold (proj_relation pvs t1). rewrite <- IHP. simpl.
+      f_equal.
+  - revert pvs. revert t2. induction t1; intros.
+    + simpl in H. invs H. unfold empty_set in H1.
+      destruct t2. econstructor. simpl in H1. invs H1.
+    + simpl in H.
+      destruct (proj_tuples pvs a) eqn:PROJ.
+      * symmetry in PROJ.
+        pose proof (PROJ' := proj_relation_fold_Some).
+        specialize (PROJ' _ _ _ _ H).
+        destruct PROJ' as (v'' & PROJ').
+        erewrite proj_relation_fold in H.
+        (* specialize (PROJ' _ _ _ _ H). *)
+        destruct (set_fold_left
+                    (fun (acc : option (set tup_type)) (elmt : tup_type) =>
+                       match proj_tuples pvs elmt with
+                       | Some tup =>
+                           option_map (set_add str_gt_list_ot.eq_dec tup) acc
+                       | None => None
+                       end) t1 (Some (empty_set tup_type))) eqn:V.
+        -- invs H.
+           destruct t2.
+           simpl in H1. invs H1.
+           simpl in H1. invs H1.
+           econstructor.
+           Local Open Scope string_scope.
+           eapply "R".
+           eapply proj_tuples_adequacy. eauto.
+           eapply IHt1. symmetry. eauto.
+        -- invs H.
+        --  eauto.
+      * rewrite proj_relation_fold_None in H. invs H.
+Qed.
 
 Lemma monotone_op_semantics_det :
-    forall (m: monotone_ops) (g: gm_type) (v v': ListSet.set tup_type),
-      monotone_op_semantics g m v ->
-      monotone_op_semantics g m v' ->
-      v = v'.
-  Proof.
-    induction m; intros.
-    - inversion H.
-    - inversion H. inversion H0. subst.
-      rewrite H7 in H3. inversion H3. reflexivity.
-    - inversion H. inversion H0. subst.
-      f_equal. eapply IHm; eassumption.
-    - inversion H. inversion H0. subst. f_equal; eauto.
-    - inversion H. inversion H0. subst.
-      specialize (IHm _ _ _ H4 H10). subst. rewrite H12 in H6. inversion H6. reflexivity.
-    - inversion H. inversion H0. subst.
-      f_equal; eauto.
-  Qed.
+  forall (m: monotone_ops) (g: gm_type) (v v': ListSet.set tup_type),
+    monotone_op_semantics g m v ->
+    monotone_op_semantics g m v' ->
+    v = v'.
+Proof.
+  induction m; intros.
+  - inversion H.
+  - inversion H. inversion H0. subst.
+    rewrite H7 in H3. inversion H3. reflexivity.
+  - inversion H. inversion H0. subst.
+    f_equal. eapply IHm; eassumption.
+  - inversion H. inversion H0. subst. f_equal; eauto.
+  - inversion H. inversion H0. subst.
+    specialize (IHm _ _ _ H4 H10). subst. rewrite H12 in H6. inversion H6. reflexivity.
+  - inversion H. inversion H0. subst.
+    f_equal; eauto.
+Qed.
 
-  Lemma monotone_op_semantics_adequacy :
-    forall (m: monotone_ops) (g: gm_type) (v: ListSet.set tup_type),
-      Some v = monotone_op_semantics_eval g m <->
-        monotone_op_semantics g m v.
-  Proof.
-    induction m; intros; split; intros.
-    - simpl in H. inversion H.
-    - inversion H.
-    - simpl in H.
-      match goal with
-      | [ H: Some _ = match ?x with | Some v => _ | None => None end |- _ ] =>
-          destruct (x) eqn:X; inversion H
-      end.
-      econstructor. eassumption.
-    - inversion H. simpl. rewrite H2. reflexivity.
-    - simpl in H.
-      Ltac destruct_hyp_match :=
-        match goal with
-        | [H: Some _ = match ?x with | Some _ => _ | None => None end |- _ ] =>
-            let Xfresh := fresh "X" in
-            destruct (x) eqn:Xfresh; inversion H
-        end.
-      destruct_hyp_match.
-      symmetry in X. eapply IHm in X.
-      econstructor; eauto.
-    - Ltac destruct_goal_match :=
-        match goal with
-        | [ |- Some _ = match ?x with | Some _ => _ | None => None end ] =>
-            let Xfresh := fresh "X" in
-            destruct (x) eqn:Xfresh; subst
-        end.
-      simpl. destruct_goal_match.
-      + inversion H. subst. eapply IHm in H5.
-        rewrite <- H5 in X. inversion X. reflexivity.
-      + inversion H. subst. eapply IHm in H5. rewrite X in H5. congruence.
-    - simpl in H.
+Lemma monotone_op_semantics_adequacy :
+  forall (m: monotone_ops) (g: gm_type) (v: ListSet.set tup_type),
+    Some v = monotone_op_semantics_eval g m <->
+      monotone_op_semantics g m v.
+Proof.
+  induction m; intros; split; intros.
+  - simpl in H. inversion H.
+  - inversion H.
+  - simpl in H.
+    match goal with
+    | [ H: Some _ = match ?x with | Some v => _ | None => None end |- _ ] =>
+        destruct (x) eqn:X; inversion H
+    end.
+    econstructor. eassumption.
+  - inversion H. simpl. rewrite H2. reflexivity.
+  - simpl in H.
+    Ltac destruct_hyp_match :=
       match goal with
       | [H: Some _ = match ?x with | Some _ => _ | None => None end |- _ ] =>
-          destruct (x) eqn:X; inversion H
+          let Xfresh := fresh "X" in
+          destruct (x) eqn:Xfresh; inversion H
       end.
-      
-      destruct_hyp_match.
-      subst.
-      econstructor; eauto.
-      eapply IHm1. congruence.
-      eapply IHm2. congruence.
-    - inversion H. subst. simpl.
-      
+    destruct_hyp_match.
+    symmetry in X. eapply IHm in X.
+    econstructor; eauto.
+  - Ltac destruct_goal_match :=
+      match goal with
+      | [ |- Some _ = match ?x with | Some _ => _ | None => None end ] =>
+          let Xfresh := fresh "X" in
+          destruct (x) eqn:Xfresh; subst
+      end.
+    simpl. destruct_goal_match.
+    + inversion H. subst. eapply IHm in H5.
+      rewrite <- H5 in X. inversion X. reflexivity.
+    + inversion H. subst. eapply IHm in H5. rewrite X in H5. congruence.
+  - simpl in H.
+    match goal with
+    | [H: Some _ = match ?x with | Some _ => _ | None => None end |- _ ] =>
+        destruct (x) eqn:X; inversion H
+    end.
+    
+    destruct_hyp_match.
+    subst.
+    econstructor; eauto.
+    eapply IHm1. congruence.
+    eapply IHm2. congruence.
+  - inversion H. subst. simpl.
+    
 
-      destruct_goal_match.
-      + destruct_goal_match.
-        * f_equal. eapply IHm1 in H2. eapply IHm2 in H4.
-          rewrite <- H2 in X. rewrite <- H4 in X0.
-          inversion X. inversion X0. reflexivity.
-        * eapply IHm2 in H4. rewrite <- H4 in X0. inversion X0.
-      + eapply IHm1 in H2. rewrite <- H2 in X. inversion X.
-    - simpl in H. destruct_hyp_match.
-      econstructor. eapply IHm. symmetry. eassumption. simpl. 
-      congruence.
-    - simpl. inversion H. subst. destruct_goal_match.
-      symmetry in X.
-      eapply IHm in X.
-      pose proof (monotone_op_semantics_det _ _ _ _ H3 X). subst.
-      simpl in *.
-      congruence.
-      eapply IHm in H3. rewrite X in H3. congruence.
-    - simpl in H. destruct_hyp_match. destruct_hyp_match.
-      econstructor; eauto.
-      eapply IHm1.
-  Admitted.
-  (* congruence. *)
-      (* eapply IHm2. congruence. *)
-    (* - inversion H. subst. eapply IHm1 in H4. eapply IHm2 in H6. *)
-      (* simpl. rewrite <- H4. rewrite <- H6. reflexivity. *)
-  (* Qed. *)
+    destruct_goal_match.
+    + destruct_goal_match.
+      * f_equal. eapply IHm1 in H2. eapply IHm2 in H4.
+        rewrite <- H2 in X. rewrite <- H4 in X0.
+        inversion X. inversion X0. reflexivity.
+      * eapply IHm2 in H4. rewrite <- H4 in X0. inversion X0.
+    + eapply IHm1 in H2. rewrite <- H2 in X. inversion X.
+  - simpl in H. destruct_hyp_match.
+    econstructor. eapply IHm. symmetry. eassumption. simpl. 
+    congruence.
+  - simpl. inversion H. subst. destruct_goal_match.
+    symmetry in X.
+    eapply IHm in X.
+    pose proof (monotone_op_semantics_det _ _ _ _ H3 X). subst.
+    simpl in *.
+    congruence.
+    eapply IHm in H3. rewrite X in H3. congruence.
+  - Opaque join_tuples join_relations.
+    simpl in H. destruct_hyp_match. destruct_hyp_match.
+    econstructor; eauto.
+    eapply IHm1.
+    congruence.
+    eapply IHm2. congruence.
+  - inversion H. subst. eapply IHm1 in H4. eapply IHm2 in H6.
+    simpl. rewrite <- H4. rewrite <- H6. reflexivity.
+Qed.
 
-  
-  (* Eval compute in ground_maps.t. *)
+

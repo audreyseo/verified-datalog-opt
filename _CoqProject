@@ -15,3 +15,6 @@
 ./UIPList.v
 ./MonotonicityTheorems.v
 ./GroundMapsHelpers.v
+./JoinHelpers.v
+./DatalogSemanticsHelpers.v
+./TransitiveClosureLeftRightExample.v

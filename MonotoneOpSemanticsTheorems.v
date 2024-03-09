@@ -1,7 +1,8 @@
 From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
 From VeriFGH Require Import DatalogSemantics.
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes MoreOrders RelDecidable.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable.
+Require Export HelperTactics.
 
 Import RelSemantics.
 
@@ -24,15 +25,6 @@ Proof.
   - simpl in H. eapply app_eq_nil in H. destruct H. congruence.
 Qed.
 
-Ltac destruct_match_goal' :=
-  match goal with
-  | [ |- ?a = match ?x with
-             | Some _ => _
-             | None => None
-             end ] =>
-      let freshX := fresh "X" in
-      destruct (x) eqn:freshX
-  end.
 
 Lemma app_cons_comm {A: Type} :
   forall (l l': list A) (a: A),
@@ -480,6 +472,7 @@ Proof.
       * inversion H3.
 Qed.
 
+(* TODO *)
 Lemma proj_relation_fold_Some :
   forall v pvs v' init,
     Some v' =
@@ -662,21 +655,11 @@ Proof.
     econstructor. eassumption.
   - inversion H. simpl. rewrite H2. reflexivity.
   - simpl in H.
-    Ltac destruct_hyp_match :=
-      match goal with
-      | [H: Some _ = match ?x with | Some _ => _ | None => None end |- _ ] =>
-          let Xfresh := fresh "X" in
-          destruct (x) eqn:Xfresh; inversion H
-      end.
+    
     destruct_hyp_match.
     symmetry in X. eapply IHm in X.
     econstructor; eauto.
-  - Ltac destruct_goal_match :=
-      match goal with
-      | [ |- Some _ = match ?x with | Some _ => _ | None => None end ] =>
-          let Xfresh := fresh "X" in
-          destruct (x) eqn:Xfresh; subst
-      end.
+  - 
     simpl. destruct_goal_match.
     + inversion H. subst. eapply IHm in H5.
       rewrite <- H5 in X. inversion X. reflexivity.

@@ -1,6 +1,6 @@
 From Coq Require Import List String Arith Psatz Lists.ListSet.
 
-From VeriFGH Require Import DatalogProps DatalogSemantics MoreOrders MonotonicityTheorems GroundMapsHelpers.
+From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps MonotonicityTheorems GroundMapsHelpers.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -22,6 +22,7 @@ Inductive check_join_vars_rel : list string -> tup_type -> tup_type ->
     v1 = v2 ->
     check_join_vars_rel (j :: jvs) t1 t2.
 
+(* TODO *)
 Lemma check_join_vars_adequacy :
   forall (jvs: list string) (t1 t2: tup_type),
     check_join_vars_rel jvs t1 t2 <->
@@ -37,6 +38,7 @@ Inductive get_vars_set_rel : tup_type -> string_sets.t -> Prop :=
     get_vars_set_rel assoc ss ->
     get_vars_set_rel ((s, g) :: assoc) (string_sets.add s ss).
 
+(* Not used as of Mar 8, so not necessary *)
 Lemma get_vars_set_adequacy :
   forall (assoc: tup_type) (ss: string_sets.t),
     get_vars_set_rel assoc ss <->
@@ -96,6 +98,9 @@ Proof.
       rewrite <- app_assoc. simpl. reflexivity.
 Qed.
 
+(* Used in the select_tuples_adequacy proof that is commented out,
+ * I think we ended up not using selects in the example so it's not 
+ * strictly necessary.  *)
 Lemma select_tuples_fold_None :
   forall (assoc: tup_type) (s0: string) (g: ground_types),
     fold_left
@@ -112,6 +117,7 @@ Proof.
   induction assoc; intros.
 Admitted.
 
+(* Not strictly necessary *)
 Lemma select_tuples_adequacy :
   forall (assoc: tup_type) (s: string) (g: ground_types),
     assoc <> nil ->
@@ -228,6 +234,7 @@ Section JoinTuplesAdequate.
   Let assoc1_vars := string_sets.diff (get_vars_set assoc1) jv_set.
   Let assoc2_vars := string_sets.diff (get_vars_set assoc2) jv_set.
 
+  (* Not necessary *)
   Lemma join_tuples_adequacy_forward :
     forall (l j r: tup_type),
       join_tuples_rel_helper (string_sets.this assoc1_vars) (string_sets.this jv_set) (string_sets.this assoc2_vars) assoc1 assoc2 l j r ->
@@ -577,12 +584,15 @@ Proof.
     + reflexivity.
 Qed.
 
+(* TODO *)
 Lemma check_join_vars_symmetric :
   forall (jvs: list string) (t1 t2: tup_type),
     check_join_vars jvs t1 t2 = check_join_vars jvs t2 t1.
 Proof.
 Admitted.
 
+(* TODO, may also need a second pair of eyes to make sure
+ * that this is reasonable  *)
 Lemma join_tuples_symmetric :
   forall (jvs: list string) (t1 t2: tup_type),
     forall (NonNil: jvs <> nil),
@@ -682,6 +692,7 @@ Proof.
         destruct H; eauto.
         right. eapply in_app_iff; eauto.
 Qed.
+(* TODO *)
 Lemma fold_left_app_comm :
   forall (g1 g2: set (tup_type * tup_type)) init jvs,
     fold_left
@@ -714,6 +725,7 @@ Admitted.
     
   
 
+(* TODO *)
 Lemma fold_left_switch :
   forall (jvs: list string) g1 g2 init,
   fold_left
@@ -753,10 +765,7 @@ Proof.
         replace (map (fun y : tup_type => (a, y)) g2) with (set_prod (a :: nil) g2).
         replace (map (fun x : tup_type => (x, a)) g2) with (set_prod g2 (a :: nil)).
         
-Admitted.
-        
-
-        
+Admitted.        
     
   
   

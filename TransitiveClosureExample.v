@@ -1,6 +1,6 @@
 From Coq Require Import List String Arith Psatz.
 
-From VeriFGH Require Import DatalogProps DatalogSemantics MoreOrders MonotonicityTheorems.
+From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps MonotonicityTheorems.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -85,11 +85,11 @@ a(y) = a(x),r(x,y)
 
     Let G := ground_maps.add "R" ( ( STR "1" :: STR "2" :: nil)
                                                      ::
-                                                     (STR "1" :: STR "3" :: nil) :: nil) (MoreOrders.ground_maps.empty (list (list ground_types))).
+                                                     (STR "1" :: STR "3" :: nil) :: nil) (GroundMaps.ground_maps.empty (list (list ground_types))).
 
-    Let G' := MoreOrders.ground_maps.add "T" nil G.
-    Let G'' := MoreOrders.ground_maps.add "A" nil G'.
-    Let G2 := MoreOrders.ground_maps.add "A" nil G.
+    Let G' := GroundMaps.ground_maps.add "T" nil G.
+    Let G'' := GroundMaps.ground_maps.add "A" nil G'.
+    Let G2 := GroundMaps.ground_maps.add "A" nil G.
 
     (* Let monotones := Eval compute in rules_to_monotone_op (rules program1). *)
 
@@ -630,8 +630,8 @@ In x h'
 
     (* Let meaning := program_semantics_eval G2 program2' 1. *)
 
-    (* Let find_meaning (m: option MoreOrders.ground_maps.t) x := match m with *)
-                            (* | Some m' => MoreOrders.ground_maps.MapS.find x m' *)
+    (* Let find_meaning (m: option GroundMaps.ground_maps.t) x := match m with *)
+                            (* | Some m' => GroundMaps.ground_maps.MapS.find x m' *)
                             (* | None => None *)
                                                                (* end. *)
 
@@ -665,7 +665,7 @@ In x h'
     (* Let meaning := Eval compute in program_semantics_eval G'' (Txy) monotones' 2. *)
 
     (*  Let find_meaning x := match meaning with *)
-    (*                         | Some m => MoreOrders.ground_maps.MapS.find x m *)
+    (*                         | Some m => GroundMaps.ground_maps.MapS.find x m *)
     (*                         | None => None *)
     (*                        end. *)
     (* Eval compute in (find_meaning "T"). *)

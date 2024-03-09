@@ -28,5 +28,7 @@ Module ground_maps := FMapWeakList.Make(String_as_OT).
 (* (List_Ground_Type_as_OT). *)
 Module str_gt_list_ot := List_as_OTF(String_GT_OT).
 
-(* Module tt_set := MSetWeakList.Make(str_gt_list_ot). *)
+Definition gm_type := ground_maps.t.
+
+Arguments gm_type /.
 

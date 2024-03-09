@@ -1,7 +1,7 @@
 From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
 From VeriFGH Require Import DatalogSemantics.
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes MoreOrders RelDecidable.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable.
 
 Require Export MonotoneOpSemanticsTheorems.
 

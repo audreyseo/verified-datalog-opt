@@ -1,6 +1,6 @@
 From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes MoreOrders RelDecidable DatalogSemantics GroundMapsHelpers.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable DatalogSemantics GroundMapsHelpers.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.

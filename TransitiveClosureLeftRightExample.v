@@ -1,6 +1,6 @@
 From Coq Require Import List String Arith Psatz.
 
-From VeriFGH Require Import DatalogProps DatalogSemantics MoreOrders MonotonicityTheorems JoinHelpers GroundMapsHelpers.
+From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps MonotonicityTheorems JoinHelpers GroundMapsHelpers.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -100,6 +100,7 @@ t(x,y) = r(x,z), t(z,y)
       eapply ground_maps.find_1. eauto.
     Qed.
 
+    (* TODO *)
     Lemma rule_semantics_same :
       forall g g' g'',
         rule_semantics g m1 g' ->
@@ -171,6 +172,7 @@ t(x,y) = r(x,z), t(z,y)
     Admitted.
           
 
+    (* Don't need to prove *)
     Lemma join_tuples_cons :
       forall (jvs: list string) (t1 t2: tup_type) (s: string) (g: ground_types),
         jvs <> nil ->

@@ -1,6 +1,6 @@
 From Coq Require Import String List Arith.
 
-From VeriFGH Require Import DatalogProps MoreOrders DatalogSemantics.
+From VeriFGH Require Import DatalogProps GroundMaps DatalogSemantics.
 Import RelSemantics.
 
 Ltac negate_negated H :=
@@ -365,6 +365,7 @@ Proof.
   simpl in H. eapply H.
 Qed.
 
+(* TODO *)
 Lemma ground_maps_raw_cons_add_commute :
   forall g x0 x1 x l1 s g0,
     SetoidList.NoDupA (ground_maps.Raw.PX.eqk (elt:=list (list ground_types)))
@@ -377,6 +378,7 @@ Lemma ground_maps_raw_cons_add_commute :
 Proof.
 Admitted.
 
+(* TODO *)
 Lemma setoid_list_eqk_contradiction :
   forall l g0 s l1,
   SetoidList.InA
@@ -421,6 +423,7 @@ Proof.
     + right. eapply IHg. eauto.
 Qed.
 
+(* TODO *)
 Lemma setoid_list_NoDup_eqk_fst :
   forall g s l1 l2,
   SetoidList.NoDupA

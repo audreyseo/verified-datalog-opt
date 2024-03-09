@@ -1,7 +1,7 @@
 From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
 From VeriFGH Require Import DatalogSemantics.
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes MoreOrders RelDecidable GroundMapsHelpers.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable GroundMapsHelpers.
 
 Require Export RuleSemanticsTheorems.
 
@@ -45,22 +45,6 @@ Proof.
   unfold list_set_subset. intros. eapply H0. unfold fold_left_fun_monotone in H.
   intros. eapply H. eassumption. eassumption.
 Qed.
-
-(*Lemma select_tuples_fun_monotone :
-  forall var val,
-    fold_left_fun_monotone (fun (acc: set tup_type) (elmt: tup_type) =>
-                              match select_tuples var val elmt with
-                              | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                              | None => acc
-                              end).
-Proof.
-  intros. simpl. intros.
-  destruct (select_tuples var val a).
-Admitted.*)
-
-(* - eapply set_add_intro1. eassumption. *)
-(* - eassumption. *)
-(* Qed. *)
 
 
 
@@ -116,86 +100,6 @@ Axiom ground_maps_equality :
     g = g'.
 
 
-(*Lemma in_select_tuples_fold'' :
-  forall (v: ListSet.set tup_type) (x: tup_type) var val,
-    List.In x
-            (set_fold_left
-               (fun (acc : set tup_type) (elmt : tup_type) =>
-                  match select_tuples var val elmt with
-                  | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                  | None => acc
-                  end) v (empty_set tup_type)) ->
-    exists y,
-      List.In y v ->
-      Some x = select_tuples var val y.
-Proof.
-  induction v; intros.
-  inversion H.
-  admit.
-Admitted.*)
-
-(*Lemma in_select_tuples_fold' :
-  forall (v v0: ListSet.set tup_type) (x: tup_type),
-  forall var val,
-    List.In x (set_fold_left
-                 (fun (acc : set tup_type) (elmt : tup_type) =>
-                    match select_tuples var val elmt with
-                    | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                    | None => acc
-                    end) v v0) ->
-    List.In x (set_fold_left (fun (acc : set tup_type) (elmt : tup_type) =>
-                                match select_tuples var val elmt with
-                                | Some tup => set_add str_gt_list_ot.eq_dec tup acc
-                                | None => acc
-                                end) v (empty_set tup_type)) \/ List.In x v0.
-Proof.
-  induction v; simpl; intros.
-  - right. eassumption.
-  - destruct (select_tuples var val a) eqn:S.
-    + eapply IHv in H. destruct H.
-      * left.
-        eapply in_select_tuples_fold2.
-        admit.
-Admitted.*)
-
-(*Lemma monotone_op_semantics_det' :
-  forall (m: monotone_ops) (g g': gm_type) (v v': ListSet.set tup_type),
-    ground_maps.Equal g g' ->
-    monotone_op_semantics g m v ->
-    monotone_op_semantics g' m v' ->
-    (list_set_equal v v').
-Proof.
-  induction m; unfold ground_maps.Equal; intros.
-  - inversion H0.
-  - inversion H0. inversion H1. subst.
-    rewrite H in H4. rewrite H8 in H4. invs H4.
-    eapply list_set_eq_refl. reflexivity.
-  - invs H0. invs H1. specialize (IHm _ _ _ _ H H7 H8).
-    
-    unfold select_relation.
-    unfold assign_vars_to_tuples in *.
-    simpl. intros. split; intros.
-    + unfold set_In, set_fold_left in *.
-      
-      
-      admit.
-Admitted.*)
-
-
-(*Lemma rule_semantics_det' :
-  forall (rulez: list (string * rel * monotone_ops)) (g g' g0 g0': gm_type),
-    ground_maps.Equal g g' ->
-    rule_semantics g rulez g0 ->
-    rule_semantics g' rulez g0' ->
-    ground_maps.Equal g0 g0'.
-Proof.
-  induction rulez; intros.
-  - inversion H0. inversion H1. subst. eassumption.
-  - inversion H0. inversion H1. subst. inversion H12; subst; clear H12.
-    admit.
-Admitted.*)
-
-
 Lemma program_semantics_det :
   forall (g g' g'': gm_type) (rulez: list (string * rel * monotone_ops)),
     program_semantics g rulez g' ->
@@ -220,6 +124,7 @@ Proof.
 Qed.
 
 
+(* Not extremely necessary, also ended up being grosser than I thought *)
 Lemma ground_maps_Equal_implies_equal :
   forall (g g': gm_type),
     ground_maps.Equal (elt:=gt_set_type) g g' <->
@@ -370,17 +275,10 @@ Proof.
         unfold ground_maps.Raw.submap.
         eapply Bool.andb_true_iff.
         split.
-        -- admit.
-           
-           
-        
-      
-      
-      
-    
-                               
+        -- admit.           
 Admitted.
 
+(* not extremely necessary *)
 Lemma ground_maps_NEqual_implies_nequal :
   forall (g g': gm_type),
     ~ ground_maps.Equal (elt:=gt_set_type) g g' <->
@@ -966,14 +864,7 @@ Proof.
     eapply join_relations_monotone; eauto.
 Qed.
 
-Print ground_maps.In.
-Print ground_maps.add.
-
-
-(* HERE *)
-        
-
-
+(* TODO *)
 Lemma rule_semantics_monotone :
   forall (rulez: list (string * rel * monotone_ops)) (g1 g2 g1' g2': gm_type),
     ground_map_Subset g1 g2 ->

@@ -1,6 +1,6 @@
 From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes MoreOrders RelDecidable.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -66,11 +66,6 @@ Module RelSemantics.
             rule_to_monotone_op_helper
               rst
               (Some (wrap_in_grounding (JOIN j_args res' (ATOM hd)) groundeds))
-                 (* (List.fold_left (fun acc (elmt: string * ground_types) => *)
-                                       (* let (n, v) := elmt in *)
-                                       (* SELECT n v acc) *)
-                                    (* groundeds *)
-                                    (* (JOIN j_args res' (ATOM hd)))) *)
         | _, _ => None
         end
     end.
@@ -120,7 +115,6 @@ Module RelSemantics.
                       set_add rel_dec elmt acc)
                    (List.map get_head rules)
                    (empty_set rel).
-    (* List.map (fun elmt => rels_to_rules elmt rules) (string_sets.elements (get_heads_sset rules)). *)
 
   Definition rules_to_monotone_op (rules: list rule) :=
     let heads := List.fold_left (fun acc elmt =>
@@ -282,11 +276,6 @@ Module RelSemantics.
       end
     else None.
   Arguments join_tuples jvs assoc1 assoc2 /.
-  
-  (* Definition tt_set_prod (v1 v2: ListSet.set tup_type) := *)
-    (* list_prod (tt_set.elements v1) (tt_set.elements v2). *)
-  
-  
   
   Definition join_relations (jvs: list string) (v1 v2: ListSet.set tup_type) :=
     List.fold_left (fun (acc: ListSet.set tup_type) (elmt: (tup_type * tup_type)) =>
@@ -543,14 +532,6 @@ Module RelSemantics.
   Defined.
 
   Print ground_maps.
-
-  (* Inductive mapi_rel (f: ground_maps.key -> gt_set_type -> gt_set_type) : gm_type -> gm_type -> Prop := *)
-  (* | mapi_rel_nil : *)
-  (*   mapi_rel f gm_empty gm_empty *)
-  (* | mapi_rel_cons : *)
-  (*   forall (g g': gm_type) (k: ground_maps.key) (e: gt_set_type), *)
-      
-                                                                                           
       
 
   Inductive rule_semantics : gm_type -> list (string * rel * monotone_ops) -> gm_type -> Prop :=
@@ -569,14 +550,6 @@ Module RelSemantics.
       Some new_tuples = anonymize_tuples (Vector.to_list (args R)) v ->
       Some old_tuples = ground_maps.find rel_name g ->
       g' = ground_maps.add rel_name (ListSet.set_union List_Ground_Type_as_OTF.eq_dec new_tuples old_tuples) g ->
-
-        (* ground_maps.mapi *)
-             (* (fun k e => *)
-                (* if string_dec k rel_name then *)
-                  (* ListSet.set_union List_Ground_Type_as_OTF.eq_dec *)
-                                    (* new_tuples e *)
-                (* else e) *)
-             (* g -> *)
       rule_semantics g' rst g'' ->
       rule_semantics g ((rel_name, R, m) :: rst) g''.
 
@@ -593,13 +566,6 @@ Module RelSemantics.
               match anonymize_tuples (Vector.to_list (args R)) v, ground_maps.find n g with
               | Some new_tuples, Some old_tuples =>
                   let g' := ground_maps.add n (ListSet.set_union List_Ground_Type_as_OTF.eq_dec new_tuples old_tuples) g in
-                    (* ground_maps.MapS.mapi *)
-                      (* (fun k e => *)
-                         (* if string_dec k (name R) then *)
-                           (* ListSet.set_union List_Ground_Type_as_OTF.eq_dec *)
-                                             (* new_tuples e *)
-                         (* else e) *)
-                      (* g in *)
                   rule_semantics_eval g' R rst_rules
               | _, _ => None
               end
@@ -620,29 +586,9 @@ Module RelSemantics.
               match anonymize_tuples (Vector.to_list (args R)) v, ground_maps.find n g with
               | Some new_tuples, Some old_tuples =>
                   let g' := ground_maps.add n (ListSet.set_union List_Ground_Type_as_OTF.eq_dec new_tuples old_tuples) g in
-                    (* ground_maps.MapS.mapi *)
-                      (* (fun k e => *)
-                         (* if string_dec k (name R) then *)
-                           (* ListSet.set_union List_Ground_Type_as_OTF.eq_dec *)
-                                             (* new_tuples e *)
-                         (* else e) *)
-                      (* g in *)
                   rule_semantics_eval' g' rst_rules
               | _, _ => None
               end
-              (* match anonymize_tuples (Vector.to_list (args R)) v with *)
-              (* | Some new_tuples => *)
-              (*     let g' := *)
-              (*       ground_maps.MapS.mapi *)
-              (*         (fun k e => *)
-              (*            if string_dec k n then *)
-              (*              ListSet.set_union List_Ground_Type_as_OTF.eq_dec *)
-              (*                                new_tuples e *)
-              (*            else e) *)
-              (*         g in *)
-              (*     rule_semantics_eval' g' rst_rules *)
-              (* | None => None *)
-              (* end *)
           | None => None
           end
         else rule_semantics_eval' g rst_rules
@@ -737,14 +683,6 @@ Module RelSemantics.
       
   Definition program_semantics_eval_loop_body (g: gm_type) (rulez: list (string * rel * monotone_ops)): option gm_type :=
     let new_g := rule_semantics_eval' g rulez in
-    (* List.fold_left (fun g'' R => *)
-    (* match g'' with *)
-    (* | Some g' => *)
-    (* rule_semantics_eval' g' R rulez *)
-    (* | None => None *)
-    (* end) *)
-    (* rulez *)
-    (* (Some g) in *)
     new_g.
     (* match new_g with *)
     (* | Some g' => *)
@@ -902,8 +840,6 @@ Module RelSemantics.
             | Some m => assoc_lookup_gen (ground_maps.this m) x
             | None => None
             end.
-
-      (* Print meaning. *)
 
       Let r_meaning := Eval compute in find_meaning meaning "R".
       Let e_meaning := Eval compute in find_meaning meaning "E".

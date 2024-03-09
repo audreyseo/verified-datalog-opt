@@ -1,5 +1,5 @@
 -R . VeriFGH
-./MoreOrders.v
+./GroundMaps.v
 ./OrderedSemiring.v
 ./Datalogo.v
 ./MagicSets.v
@@ -18,3 +18,4 @@
 ./JoinHelpers.v
 ./DatalogSemanticsHelpers.v
 ./TransitiveClosureLeftRightExample.v
+./HelperTactics.v

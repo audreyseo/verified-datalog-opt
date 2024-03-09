@@ -1,7 +1,7 @@
 (* Example of Transitive Closure Datalog Program *)
 From Coq Require Import List String Arith Psatz.
 
-From VeriFGH Require Import DatalogProps DatalogSemantics MoreOrders.
+From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -121,13 +121,13 @@ Module TransitiveClosureProgram.
         
         T and A are initialized to be empty
     *)
-    Let G := MoreOrders.ground_maps.add "R" ( ( STR "1" :: STR "2":: nil)
+    Let G := GroundMaps.ground_maps.add "R" ( ( STR "1" :: STR "2":: nil)
                                                      ::
-                                                     (STR "1" :: STR "3" :: nil) :: nil) (MoreOrders.ground_maps.empty (list (list ground_types))).
+                                                     (STR "1" :: STR "3" :: nil) :: nil) (GroundMaps.ground_maps.empty (list (list ground_types))).
 
-    Let G' := MoreOrders.ground_maps.add "T" nil G.
-    Let G1 := MoreOrders.ground_maps.add "A" nil G'. (* ground map for program 1 *)
-    Let G2 := MoreOrders.ground_maps.add "A" nil G.  (* ground map for program 2 *)
+    Let G' := GroundMaps.ground_maps.add "T" nil G.
+    Let G1 := GroundMaps.ground_maps.add "A" nil G'. (* ground map for program 1 *)
+    Let G2 := GroundMaps.ground_maps.add "A" nil G.  (* ground map for program 2 *)
 
 
     (* Represent rules of program 1 as monotone operations *)
@@ -156,7 +156,7 @@ Module TransitiveClosureProgram.
     Let A2_meaning := Eval compute in find_meaning meaning2 "A".
     Print A2_meaning.
     
-    Import MoreOrders.
+    Import GroundMaps.
 
     Lemma transitive_closure_same :
       forall (fuel: nat) (g g' g'': gm_type),

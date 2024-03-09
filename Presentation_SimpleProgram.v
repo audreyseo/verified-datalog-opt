@@ -81,12 +81,12 @@ Module SimpleProgram.
 
     (* Now we define the initial ground values in the database. 
     This adds the tuples (1, 2, 3) and (5, 6, 7) to T and initializes S and R as empty. *)
-    Let G := MoreOrders.ground_maps.add "T" ( ( STR "1" :: STR "2" :: STR "3" :: nil)
+    Let G := GroundMaps.ground_maps.add "T" ( ( STR "1" :: STR "2" :: STR "3" :: nil)
                                                      ::
                                             (STR "5" :: STR "6" :: STR "7" :: nil) :: nil)
-                                            (MoreOrders.ground_maps.empty (list (list ground_types))).
-    Let G' := MoreOrders.ground_maps.add "S" nil G.
-    Let G'' := MoreOrders.ground_maps.add "R" nil G'.
+                                            (GroundMaps.ground_maps.empty (list (list ground_types))).
+    Let G' := GroundMaps.ground_maps.add "S" nil G.
+    Let G'' := GroundMaps.ground_maps.add "R" nil G'.
 
     (* Now we can evaluate our programs on the values in the ground maps. *)
     Let meaning1 := program_semantics_eval G'' program1 3.
@@ -97,15 +97,15 @@ Module SimpleProgram.
 
     (* This is a helper function to  *)
     Let find_meaning (m: option gm_type) x := match m with
-    | Some m' => MoreOrders.ground_maps.find x m'
-    (* option_map (@MoreOrders.ground_maps.this (list (list ground_types))) (MoreOrders.ground_maps.find x m') *)
+    | Some m' => GroundMaps.ground_maps.find x m'
+    (* option_map (@GroundMaps.ground_maps.this (list (list ground_types))) (GroundMaps.ground_maps.find x m') *)
     | None => None
     end.
 
     Eval compute in (find_meaning meaning1 "T").
 
     (* This is what we would need to prove to show these programs are identical *)
-    Import MoreOrders.
+    Import GroundMaps.
     Lemma simple_programs_same :
             forall (fuel: nat) (g g' g'': gm_type),
               ground_maps.In "T" g ->

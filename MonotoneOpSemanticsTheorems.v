@@ -1,8 +1,8 @@
 From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
 From VeriFGH Require Import DatalogSemantics.
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable.
-Require Export HelperTactics.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable ListSetHelpers.
+Require Export HelperTactics Assumptions BaseUtils.
 
 Import RelSemantics.
 
@@ -88,27 +88,31 @@ Proof.
            rewrite X1 in X0.
            rewrite <- app_nil_end in X0.
            invc X0.
-           Definition option_map_map {A' B' C': Type} (f: A' -> B' -> C') (a: option A') (b: option B') : option C' :=
-             match a, b with
-             | Some a', Some b' => Some (f a' b')
-             | _, _ => None
-             end.
+           
+           (* Set Printing All. *)
+           simpl in *.
+           match goal with
+           | [ |- context G [Some (?a ++ ?b)] ] =>
+               let Atype := type of a in
+               match Atype with
+               | list ?A =>
+                   let G' := context G[option_map_map (@app A) (Some a) (Some b)] in
+                   change G'
+               end
+           end.
            replace (Some (t ++ init)) with (option_map_map (@app (string * ground_types)) (Some t) (Some init)) by reflexivity.
            rewrite <- X.
            replace ((a, g) :: init) with (((a, g) :: nil) ++ init) by reflexivity.
-           (* Set Printing All. *)
-           (* rewrite <- app_comm_cons. *)
-           (* Set Printing All. *)
            rewrite app_assoc.
-           replace (Some ((t0 ++ (a, g) :: nil) ++ init)) with
+           replace (Some ((t ++ (a, g) :: nil) ++ init)) with
              (option_map_map (@app (string * ground_types))
-                             (Some ((t0 ++ (a, g) :: nil)))
+                             (Some ((t ++ (a, g) :: nil)))
                              (Some init)) by reflexivity.
            f_equal.
            ++ unfold tup_type. rewrite X1. reflexivity.
            ++ rewrite app_cons_comm.
               f_equal. f_equal; eauto.
-              assert (Some t = Some (t0 ++ (a, g ) :: nil)).
+              assert (Some l = Some (t ++ (a, g ) :: nil)).
               rewrite <- X.
               (* Set Printing All. *)
               unfold tup_type in X0, X1.
@@ -142,9 +146,7 @@ Proof.
       revert init. revert assoc. induction pvs; intros.
       * simpl. reflexivity.
       * simpl.
-        destruct (assoc_lookup assoc a0).
-        -- erewrite <- IHpvs. reflexivity.
-        -- erewrite <- IHpvs. reflexivity.
+        destruct (assoc_lookup assoc a0); erewrite <- IHpvs; reflexivity.
 Qed.
 
 
@@ -653,7 +655,7 @@ Proof.
         destruct (x) eqn:X; inversion H
     end.
     econstructor. eassumption.
-  - inversion H. simpl. rewrite H2. reflexivity.
+  - inversion H. simpl. simpl in H2. subst. rewrite H2. reflexivity.
   - simpl in H.
     
     destruct_hyp_match.

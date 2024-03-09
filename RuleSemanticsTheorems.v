@@ -3,7 +3,7 @@ From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Progra
 From VeriFGH Require Import DatalogSemantics.
 From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable.
 
-Require Export MonotoneOpSemanticsTheorems.
+Require Export MonotoneOpSemanticsTheorems HelperTactics.
 
 Import RelSemantics.
 
@@ -57,11 +57,18 @@ Proof.
            eapply monotone_op_semantics_adequacy in H4.
            rewrite <- H4 in X. inversion X. subst.
            clear X. rewrite X0 in H5. inversion H5. subst.
-           inversion H6. subst. eassumption.
-           eassumption.
-        -- inversion H6.
-      * eapply monotone_op_semantics_adequacy in H4. rewrite X in H4. inversion H4. subst. rewrite X0 in H5. congruence.
-    + eapply monotone_op_semantics_adequacy in H4. rewrite X in H4. congruence.
+           eauto.
+           simpl in H6.
+           rewrite <- H6 in X1.
+           invs X1. eauto.
+           eauto.
+        -- simpl in H6. rewrite <- H6 in X1.
+           congruence.
+      * eapply monotone_op_semantics_adequacy in H4. rewrite X in H4.
+        invs H4.        
+        some_is_not_none.
+    + eapply monotone_op_semantics_adequacy in H4.
+      some_is_not_none.
 Qed.
 
 (* States of reaching fixpoint:

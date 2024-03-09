@@ -1,13 +1,12 @@
 From Coq Require Import  List String Arith Psatz DecidableTypeEx OrdersEx Program.Equality FMapList FMapWeakList MSetWeakList Lists.ListSet.
 
-From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes GroundMaps RelDecidable.
+From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered OrderedGroundTypes RelDecidable Assumptions.
+Require Export GroundMaps ListSetHelpers HelperTactics.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
 Local Open Scope nat_scope.
 
-Ltac invs H := inversion H; subst.
-Ltac invc H := inversion H; subst; clear H.
 
 
 Module RelSemantics.
@@ -211,9 +210,7 @@ Module RelSemantics.
                    string_sets.empty.
 
   
-  Definition tup_type : Type := list (string * ground_types).
-  Definition tup_entry : Type := string * ground_types.
-
+  
   Definition proj_tuples (pvs: list string) (assoc: tup_type) :=
     List.fold_left (fun acc (elmt: string) =>
                       match assoc_lookup assoc elmt with
@@ -313,10 +310,7 @@ Module RelSemantics.
 
   Arguments proj_relation / _ _.
 
-  Definition tup_empty_set := @empty_set tup_type.
-  Arguments tup_empty_set /.
-  Definition tup_set: Type := ListSet.set tup_type.
-  Arguments tup_set /.
+  
 
   (* Definition proj_tuples (pvs: list string) (assoc: tup_type) :=
     List.fold_left (fun acc (elmt: string) =>
@@ -368,27 +362,9 @@ Module RelSemantics.
 
 
         
-  Definition list_set_subset {T: Type} (v v': ListSet.set T) :=
-    forall (x: T),
-      set_In x v -> set_In x v'.
-  Arguments list_set_subset {T}%type_scope v v'/.
+ 
 
-  Definition list_set_equal {T: Type} (v v': ListSet.set T) :=
-    forall (x: T),
-      set_In x v <-> set_In x v'.
-  Arguments list_set_equal {T}%type_scope v v' /.
-
-  Lemma list_set_eq_refl {T: Type}:
-    forall (v v': ListSet.set T),
-      v = v' ->
-      list_set_equal v v'.
-  Proof.
-    intros. simpl. subst. split; intros; eauto.
-  Qed.
-  Axiom list_set_equality :
-    forall (T: Type) (x1 x2: ListSet.set T),
-      list_set_equal x1 x2 ->
-      x1 = x2.
+  
   
       
 
@@ -402,10 +378,6 @@ Module RelSemantics.
       proj_relation_rel pvs t1 t2 ->
       proj_relation_rel pvs (t' :: t1) (t'' :: t2).
 
-  Print proj_relation.
-
-        
-                                
 
   Definition assign_vars_to_tuples (R: rel) (v: list (list ground_types)) :=
     List.fold_left (fun acc elmt =>
@@ -417,15 +389,6 @@ Module RelSemantics.
                    (@empty_set tup_type).
   Arguments assign_vars_to_tuples / _ _.
 
-  Print ground_maps.
-
-  Definition gt_set_type := list (list ground_types).
-
-  Definition gm_empty := ground_maps.empty gt_set_type.
-
-  Definition gm_type := ground_maps.t gt_set_type.
-
-                        
   Inductive monotone_op_semantics : gm_type -> monotone_ops -> ListSet.set tup_type -> Prop :=
   | atom_semantics :
     forall (R: rel) (g: gm_type) (v: list (list ground_types)),

@@ -1,6 +1,6 @@
 From Coq Require Import List String Arith Psatz Lists.ListSet.
 
-From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps MonotonicityTheorems GroundMapsHelpers.
+From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps MonotonicityTheorems GroundMapsHelpers HelperTactics.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -219,10 +219,6 @@ Inductive join_tuples_rel_helper : list string -> list string -> list string -> 
     join_tuples_rel_helper nil nil rvs assoc1 assoc2 lft join rght ->
     join_tuples_rel_helper nil nil (r1 :: rvs) assoc1 assoc2 lft join ((r1, r2) :: rght).
 
-Axiom string_sets_equality :
-  forall (s1 s2: string_sets.t),
-    string_sets.Equal s1 s2 ->
-    s1 = s2.
 
 Require Import Program.Equality.
 
@@ -390,12 +386,7 @@ Proof.
   destruct (check_join_vars jvs assoc1 assoc2) eqn:C.
   eapply check_join_vars_adequacy in C. eapply check_join_vars_implies_all_vars_present in C. destruct C as (C1 & C2).
   eapply all_vars_present_adequacy in C1, C2.
-  Ltac destruct_any_match_in_goal :=
-    match goal with
-    | [ |- context G [match ?a with | Some _ => _ | None => _ end ] ] =>
-        let A := fresh "A" in
-        destruct (a) eqn:A; try congruence
-    end.
+  
   destruct_any_match_in_goal.
   destruct_any_match_in_goal.
   destruct_any_match_in_goal.
@@ -715,6 +706,7 @@ Proof.
     simpl. reflexivity.
   - simpl. erewrite IHg1.
     enough (g2 ++ a :: g1 = a :: g2 ++ g1).
+    simpl in *.
     rewrite H. simpl.
     reflexivity.
     eapply list_set_equality.

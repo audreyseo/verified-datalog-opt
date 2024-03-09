@@ -6,6 +6,7 @@ From VeriFGH Require Import OrdersFunctor DatalogProps StringOrders RelOrdered O
 Require Export RuleSemanticsTheorems.
 
 Import RelSemantics.
+Local Open Scope list_scope.
 
 
 Lemma set_fold_left_subset {A B: Type} :
@@ -123,6 +124,63 @@ Proof.
       eassumption.
 Qed.
 
+Lemma ground_maps_raw_check_fold_false :
+  forall g g',
+  ground_maps.Raw.fold
+    (fun (k : ground_maps.Raw.key) (e : list (list ground_types))
+       (b : bool) =>
+     (ground_maps.Raw.check List_Ground_Type_as_OT.eqb k e
+                            g' && b)%bool) g false = false.
+Proof.
+  induction g; eauto.
+  intros. simpl. destruct a. rewrite Bool.andb_false_r. eauto.
+Qed.
+
+(* since no functional extensionality... *)
+Lemma ground_maps_raw_check_fold_false' :
+  forall g g',
+  ground_maps.Raw.fold
+    (fun (k : ground_maps.Raw.key) (e : list (list ground_types))
+       (b : bool) =>
+     (ground_maps.Raw.check (fun e' e0 => List_Ground_Type_as_OT.eqb e' e0) k e
+                            g' && b)%bool) g false = false.
+Proof.
+  induction g; eauto.
+  intros. simpl. destruct a. rewrite Bool.andb_false_r. eauto.
+Qed.
+
+Lemma ground_maps_raw_check_fold_init_is_true :
+  forall g g' init,
+  ground_maps.Raw.fold
+    (fun (k : ground_maps.Raw.key) (e : list (list ground_types))
+       (b : bool) =>
+     (ground_maps.Raw.check List_Ground_Type_as_OT.eqb k e
+                            g' && b)%bool) g init = true ->
+  init = true.
+Proof.
+  induction g; eauto.
+  intros.
+  simpl in H.
+  destruct a.
+  eapply IHg in H. eapply Bool.andb_true_iff in H. eapply H.
+Qed.
+
+Lemma ground_maps_raw_check_fold_init_is_true' :
+  forall g g' init,
+  ground_maps.Raw.fold
+    (fun (k : ground_maps.Raw.key) (e : list (list ground_types))
+       (b : bool) =>
+     (ground_maps.Raw.check (fun e' e0 => List_Ground_Type_as_OT.eqb e0 e') k e
+                            g' && b)%bool) g init = true ->
+  init = true.
+Proof.
+  induction g; eauto.
+  intros.
+  simpl in H.
+  destruct a.
+  eapply IHg in H. eapply Bool.andb_true_iff in H. eapply H.
+Qed.
+
 
 (* Not extremely necessary, also ended up being grosser than I thought *)
 Lemma ground_maps_Equal_implies_equal :
@@ -149,7 +207,6 @@ Proof.
         -- invs H3. eauto.
       * contradiction.
   - eapply ground_maps_equality in H. invs H.
-    Print ground_maps.
     eapply ground_maps.equal_1.
     unfold ground_maps.Equivb. unfold ground_maps.Raw.Equivb. split; try split; intros; eauto.
     pose proof (ground_maps_MapsTo_det).
@@ -177,7 +234,9 @@ Proof.
       eauto.
       eauto.
       contradiction.
-    + unfold ground_maps.equal in H. unfold ground_maps.Raw.equal in H. simpl in H.
+    + unfold ground_maps.equal in H. unfold ground_maps.Raw.equal in H.
+      
+      simpl in H.
       eapply Bool.andb_true_iff in H.
       destruct H.
       unfold ground_maps.Raw.submap in H, H0.
@@ -186,10 +245,14 @@ Proof.
       unfold ground_maps.find. simpl.
       destruct (String_as_OT.eq_dec y s0); destruct (String_as_OT.eq_dec y s).
       * subst.
-        destruct (andb (ground_maps.Raw.check
-            (fun e' e : list (list ground_types) =>
-             List_Ground_Type_as_OT.eqb e e') s g0 
-            ((s, g1) :: g)) true) eqn:A1;
+        simpl in *.
+        pose proof (A1 := ground_maps_raw_check_fold_init_is_true' _ _ _ H0).
+        (* destruct (andb (ground_maps.Raw.check *)
+        (*     (fun e' e : list (list ground_types) => *)
+        (*      List_Ground_Type_as_OT.eqb e e') s g0  *)
+        (*     ((s, g1) :: g)) true) eqn:A1; *)
+        (* pose proof (A2 := ground_maps_raw_check_fold_init_is_true _ _ _ H). *)
+        (* rewrite A2 in *. rewrite A1 in *. *)
         destruct (andb (ground_maps.Raw.check List_Ground_Type_as_OT.eqb s g1
                                               ((s, g0) :: this)) true) eqn:A2.
         -- eapply Bool.andb_true_iff in A2, A1.
@@ -205,44 +268,28 @@ Proof.
            ++ unfold List_Ground_Type_as_OT.eqb in *.
               destruct (List_Ground_Type_as_OT.Inner.eq_dec (a :: g1) g0); try congruence.
         -- eapply Bool.andb_false_iff in A2. destruct A2; try congruence.
-           enough (ground_maps.Raw.fold
-        (fun (k : ground_maps.Raw.key) (e : list (list ground_types))
-           (b : bool) =>
-         (ground_maps.Raw.check List_Ground_Type_as_OT.eqb k e
-                                ((s, g0) :: this) && b)%bool) g false = false).
-           rewrite H2 in H. congruence.
-           admit.
-        -- eapply Bool.andb_false_iff in A1. destruct A1; try congruence.
-           enough (ground_maps.Raw.fold
-         (fun (k : ground_maps.Raw.key) (e : list (list ground_types))
-            (b : bool) =>
-          (ground_maps.Raw.check
-             (fun e' e0 : list (list ground_types) =>
-              List_Ground_Type_as_OT.eqb e0 e') k e 
-             ((s, g1) :: g) && b)%bool) this false = false).
-           rewrite H2 in H0. congruence.
-           admit.
-        -- enough (ground_maps.Raw.fold
-        (fun (k : ground_maps.Raw.key) (e : list (list ground_types))
-           (b : bool) =>
-         (ground_maps.Raw.check List_Ground_Type_as_OT.eqb k e
-                                ((s, g0) :: this) && b)%bool) g false = false).
-           rewrite H1 in H. congruence.
-           admit.
+           rewrite ground_maps_raw_check_fold_false in H. congruence.
       * subst.
         enough (andb (ground_maps.Raw.check List_Ground_Type_as_OT.eqb s0 g1
                                             ((s, g0) :: this)) true = true).
         unfold ground_maps.Raw.check in H1.
         simpl in H1. destruct (String_as_OT.eq_dec s0 s); try congruence.
         destruct (ground_maps.Raw.find (elt:= list (list ground_types)) s0 this) eqn:F.
-        unfold gt_set_type. rewrite F.
+        unfold gt_set_type. rewrite <- F.
         eapply Bool.andb_true_iff in H1. destruct H1.
         enough (List_Ground_Type_as_OT.eqb g1 l = true -> g1 = l).
-        eapply H3 in H1. subst. reflexivity.
+        eapply H3 in H1. subst. eauto.
         admit.
         simpl in H1. congruence.
-        admit.
+        rewrite Bool.andb_true_r.
+        match goal with
+        | [ |- ?a = true ] => destruct a eqn:A
+        end.
+        reflexivity.
+        simpl in *. rewrite A in H. simpl in H. rewrite ground_maps_raw_check_fold_false in H. congruence.
       * subst.
+        
+        
         enough ((ground_maps.Raw.check
             (fun e' e : list (list ground_types) =>
              List_Ground_Type_as_OT.eqb e e') s g0 
@@ -252,11 +299,14 @@ Proof.
         unfold ground_maps.Raw.check in H1.
         simpl in H1. destruct (String_as_OT.eq_dec s s0); try congruence.
         destruct (ground_maps.Raw.find (elt:= list (list ground_types)) s g) eqn:F.
-        unfold gt_set_type. rewrite F. unfold List_Ground_Type_as_OT.eqb in H1.
-        destruct (List_Ground_Type_as_OT.Inner.eq_dec l g0). subst. reflexivity.
+        unfold gt_set_type.
+        
+        rewrite <- F.
+        unfold List_Ground_Type_as_OT.eqb in H1.
+        destruct (List_Ground_Type_as_OT.Inner.eq_dec l g0). subst. eauto.
         congruence.
         congruence.
-        admit.
+        eapply ground_maps_raw_check_fold_init_is_true'. eauto.
       * f_equal.
         invs NoDup. invs NoDup0.
         enough (ground_maps.Equal ({| ground_maps.this := g;
@@ -275,7 +325,8 @@ Proof.
         unfold ground_maps.Raw.submap.
         eapply Bool.andb_true_iff.
         split.
-        -- admit.           
+        -- 
+          admit.           
 Admitted.
 
 (* not extremely necessary *)
@@ -575,11 +626,19 @@ Proof.
       simpl. rewrite A.
       destruct_goal_match.
       * eapply IHv in X. replace (Some (init ++ s)) with (option_map_map (app (A:= tup_type)) (Some init) (Some s)) by reflexivity.
-        rewrite H. rewrite X.
         Opaque proj_relation.
+        Opaque option_map_map. simpl in *.
+        rewrite H.
+        symmetry.
+        unfold set.
+        app_of_options.
+        symmetry.
+        rewrite X.
+        Transparent option_map_map.
         simpl.
-        destruct (proj_relation proj_vars v) eqn:P.
-        -- f_equal. eapply list_set_equality.
+        destruct_any_match_in_goal.
+        f_equal.
+        eapply list_set_equality.
            simpl. split; intros.
            ++ eapply in_app_or in H0. eapply in_or_app.
               destruct H0.
@@ -593,7 +652,6 @@ Proof.
               ** simpl in H0. destruct H0; subst.
                  --- left. eapply set_add_iff. left. eauto.
                  --- right. eauto.
-        -- reflexivity.
       * pose proof (proj_relation_fold_None').
         eapply H0 in X. rewrite X in H. invs H.
     + rewrite proj_relation_fold_None in H. invs H.
@@ -912,8 +970,6 @@ Proof.
       * eapply (ground_maps.NoDup g1).
 Admitted.
 
-(* need equivalent of set_add_iff *)
-
 Lemma rule_semantics_increasing :
   forall (rulez: list (string * rel * monotone_ops)) (g1 g2: gm_type),
     rule_semantics g1 rulez g2 ->
@@ -925,34 +981,29 @@ Proof.
   - invs H.
     eapply IHrulez in H9.
     simpl. simpl in H9.
+    pose proof (NoDup1 := ground_maps.NoDup g1).
+    pose proof (NoDup2 := ground_maps.NoDup g2).
     split; intros.
     + destruct H9.
       eapply H1. unfold ground_maps.In in *. unfold ground_maps.Raw.PX.In in *. destruct H0.
       destruct (String_as_OT.eq_dec x (name R)).
       * subst. exists (set_union List_Ground_Type_as_OTF.eq_dec new_tuples
                             old_tuples).
-        simpl. eapply ground_maps_raw_MapsTo_add_iff.
-        eapply (ground_maps.NoDup g1).
-        left. eauto.
-      * exists x0. eapply ground_maps_raw_MapsTo_add_iff.
-        eapply (ground_maps.NoDup g1).
-        right. split; eauto.
+        simpl. eapply ground_maps_raw_MapsTo_add_iff; eauto.
+      * exists x0. eapply ground_maps_raw_MapsTo_add_iff; eauto.
     + destruct (String_as_OT.eq_dec x (name R)).
       * subst.
         destruct H9. eapply H7.
-        eapply ground_maps.find_1.
+        eapply ground_maps.find_1; eauto.
         eapply ground_maps.find_2 in H1, H0.
-        unfold ground_maps.MapsTo. eapply ground_maps_raw_MapsTo_add_iff.
-        eapply (ground_maps.NoDup g1).
-        left. split; reflexivity.
+        unfold ground_maps.MapsTo. eapply ground_maps_raw_MapsTo_add_iff; eauto.
         eauto.
-        rewrite <- H5 in H0. invs H0. eapply set_union_iff. right. eauto.
-      * destruct H9. eapply H7.
-        eapply ground_maps.find_1. unfold ground_maps.MapsTo. simpl. eapply ground_maps_raw_MapsTo_add_iff.
-        eapply (ground_maps.NoDup g1).
+        simpl in *. rewrite <- H5 in H0.
+        invs H0. eapply set_union_iff. right. eauto.
+      * destruct H9. eapply H7; eauto.
+        eapply ground_maps.find_1. unfold ground_maps.MapsTo. simpl. eapply ground_maps_raw_MapsTo_add_iff; eauto.
         right. split; eauto.
-        eapply ground_maps.find_2. eauto. eauto.
-        eauto.
+        eapply ground_maps.find_2; eauto.
 Qed.
 
 Lemma ground_map_Subset_transitive :
@@ -973,9 +1024,11 @@ Proof.
     exists l1. eauto.
     eapply G1k in H2. destruct H2.
     pose proof (ground_maps_MapsTo_det).
-    eapply G2v. eapply ground_maps.find_1. eauto. eapply ground_maps.find_1. eauto.
-    eapply G1v.
-    eapply ground_maps.find_1. eauto. eapply ground_maps.find_1. eauto. eauto.
+    eapply G2v. eapply ground_maps.find_1;    
+    eauto.
+    eapply ground_maps.find_1; eauto.
+    eapply G1v; try 
+    eapply ground_maps.find_1; eauto.
 Qed.
 
 Lemma program_semantics_increasing :

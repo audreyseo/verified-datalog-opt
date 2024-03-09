@@ -19,3 +19,6 @@
 ./DatalogSemanticsHelpers.v
 ./TransitiveClosureLeftRightExample.v
 ./HelperTactics.v
+./Assumptions.v
+./ListSetHelpers.v
+./BaseUtils.v

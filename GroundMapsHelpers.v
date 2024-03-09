@@ -1,15 +1,8 @@
 From Coq Require Import String List Arith.
 
 From VeriFGH Require Import DatalogProps GroundMaps DatalogSemantics.
-Import RelSemantics.
+Import RelSemantics HelperTactics.
 
-Ltac negate_negated H :=
-                let Ht := type of H in
-                match Ht with
-                | ~ ?y =>
-                    let Y := fresh "Y" in
-                    assert (Y: y)
-                end.
 
 
 Lemma ground_maps_MapsTo_implies_In :
@@ -115,7 +108,7 @@ Proof.
         destruct H.
         (* exists x1. *)
         invs H.
-        -- invs H1. simpl in *. invs H0. exists g0. left. reflexivity.
+        -- invs H1. simpl in *. invs H0. exists l0. left. reflexivity.
         -- assert (exists e,
                       SetoidList.InA (ground_maps.Raw.PX.eqke (elt:=gt_set_type)) (
                                        x, e) g).
@@ -127,7 +120,7 @@ Proof.
            eapply IHg in H2.
            pose proof (string_dec x s).
            destruct H3.
-           ++ subst. exists g0. left. reflexivity.
+           ++ subst. exists l0. left. reflexivity.
            ++ destruct H2. exists x2. right. eassumption.
 Qed.        
 
@@ -483,7 +476,7 @@ Proof.
         destruct H3.
         -- destruct H3; subst. exists l2. eapply ground_maps_raw_MapsTo_add_iff. eapply (ground_maps.NoDup g2).
            left. eauto.
-        -- destruct H3. assert (exists e, ground_maps.Raw.PX.MapsTo x0 e ((s, g0) :: g)).
+        -- destruct H3. assert (exists e, ground_maps.Raw.PX.MapsTo x0 e ((s, l) :: g)).
            simpl in H.
            exists x1. eauto.
            eapply H in H5. destruct H5. exists x2.

@@ -17,6 +17,7 @@ End GroundingNotation.
 
 Module TransitiveClosureProgram.
   Import GroundingNotation.
+  Import DatalogNotation.
 
   Section RelDecls.
     Let R x y := mk_rel "R" (x :: y :: nil) edb.
@@ -42,10 +43,6 @@ a(y) = a(x),r(x,y)
     Declare Scope rel_scope.
     Delimit Scope rel_scope with rel.
 
-    Notation "{ r :- }" := (rule_def_empty r) : rel_scope.
-    Notation "{ r :- x } " := (rule_def r (x :: nil)) : rel_scope.
-    Notation "{ r :- x ; y ; .. ; z }" := (rule_def r (cons x (cons y .. (cons z nil) ..))) : rel_scope.
-
     Eval compute in ({ Txy :- (R "x" "y") })%rel.
     Local Open Scope rel_scope.
 
@@ -59,10 +56,7 @@ a(y) = a(x),r(x,y)
     
     Let Ay2 := { (A "y") :- (A "x"); (R "x" "y") }.
 
-    Declare Scope string_sets_scope.
-    Delimit Scope string_sets_scope with ssets.
-    Notation "'s{' x '}s'" := (string_sets.add x string_sets.empty) : string_sets_scope.
-    Notation "'s{' x ; y ; .. ; z '}s'" := (string_sets.add x (string_sets.add y .. (string_sets.add z string_sets.empty) ..)) : string_sets_scope.
+
     Eval compute in s{ "x"; "y"; "z" }s%ssets.
 
     Definition program1 :=

@@ -54,19 +54,22 @@ Definition body_args (bodies: list rel) :=
 
 
 
-Definition safe_rule (r: rule) :=
-  match r with
-  | rule_def_empty head => true
-  | rule_def head body =>
-      let bargs := body_args body in
-      let hargs := vector_to_string_set (args head) in
-      string_sets.equal bargs hargs
-  | rule_def_exists head exists_args body =>
-      let hargs := vector_to_string_set (args head) in
-      let bargs := body_args body in
-      let eargs := exists_args in
-      string_sets.equal (string_sets.union hargs eargs) bargs
-  end.
+(* (* Not sure if this is the correct formalization of this, actually *) *)
+(* Definition safe_rule (r: rule) := *)
+(*   match r with *)
+(*   | rule_def_empty head => true *)
+(*   | rule_def head body => *)
+(*       let bargs := body_args body in *)
+(*       let hargs := vector_to_string_set (args head) in *)
+(*       string_sets.equal bargs hargs *)
+(*   | rule_def_exists head exists_args body => *)
+(*       let hargs := vector_to_string_set (args head) in *)
+(*       let bargs := body_args body in *)
+(*       let eargs := exists_args in *)
+(*       string_sets.equal (string_sets.union hargs eargs) bargs *)
+(*   end. *)
+
+
 
 Structure program :=
   DlProgram
@@ -75,6 +78,29 @@ Structure program :=
       answer: rel;
       rules: list rule;
     }.
+
+
+Module DatalogNotation.
+  Declare Scope rel_scope.
+  Delimit Scope rel_scope with rel.
+
+  Notation "{ r :- }" := (rule_def_empty r) : rel_scope.
+  Notation "{ r :- x } " := (rule_def r (x :: nil)) : rel_scope.
+  Notation "{ r :- x ; y ; .. ; z }" := (rule_def r (cons x (cons y .. (cons z nil) ..))) : rel_scope.
+  Print rule_def_exists.
+  Notation "{ r 'exists' a :- x ; y ; .. ; z }" := (rule_def_exists r (string_sets.add a string_sets.empty) (cons x (cons y .. (cons z nil)  .. ))) : rel_scope.
+  Notation "{ r 'exists'  a ; b ; .. ; c  :- x ; y ; .. ; z }" := (rule_def_exists r (string_sets.add a (string_sets.add b .. (string_sets.add c (string_sets.empty)) .. ) ) (cons x (cons y .. ( cons z nil ) .. ))) : rel_scope.
+
+  Declare Scope string_sets_scope.
+  Delimit Scope string_sets_scope with ssets.
+  Notation "'s{' x '}s'" := (string_sets.add x string_sets.empty) : string_sets_scope.
+  Notation "'s{' x ; y ; .. ; z '}s'" := (string_sets.add x (string_sets.add y .. (string_sets.add z string_sets.empty) ..)) : string_sets_scope.
+  Eval compute in s{ "x"; "y"; "z" }s%ssets.
+
+End DatalogNotation.
+Import DatalogNotation.
+Arguments DlProgram (idbs edbs)%ssets answer rules%list_scope.
+
 
 (* Check Relation. *)
 

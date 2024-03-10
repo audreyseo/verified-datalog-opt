@@ -416,6 +416,28 @@ Proof.
     + right. eapply IHg. eauto.
 Qed.
 
+Lemma eqk_implies_not_NoDup :
+  forall g x y,
+  ground_maps.Raw.PX.eqk x y ->
+  ~ SetoidList.NoDupA
+         (ground_maps.Raw.PX.eqk (elt:=list (list ground_types)))
+         (x :: y :: g).
+Proof. intros. unfold not. intros.
+ Admitted.
+(* induction g; intros.
+- unfold not. intros. invs H0. unfold not in H3.
+Proof.
+  induction g; intros.
+  - split.
+    + econstructor. unfold not; intros. invs H0.
+      econstructor.
+    + econstructor. unfold not; intros. invs H0. econstructor.
+  - invs H.
+    split; eauto.
+    eapply notIn_setoid_cons_subsets in H2. invs H3. econstructor; eauto.
+Qed.
+  *)
+
 (* TODO *)
 Lemma setoid_list_NoDup_eqk_fst :
   forall g s l1 l2,
@@ -426,6 +448,18 @@ Lemma setoid_list_NoDup_eqk_fst :
     (ground_maps.Raw.PX.eqk (elt:=list (list ground_types)))
     ((s, l2) :: g).
 Proof.
+induction g; intros.
+- econstructor. unfold not. intros. invs H0. econstructor.
+- econstructor. unfold not. intros. invs H0. 
+(* This NoDup lemma seems to be going the wrong direction *)
+(* but it's the only way I see to apply the inductive hypothesis  *)
+pose proof (NoDup_setoid_cons_subsets _ _ _ H). destruct H1.
+apply IHg with (l2:=l2) in H1. apply eqk_implies_not_NoDup with (g:=g) in H2.
+(* Now it would be nice to go the other way back *)
+(* The inverse of the NoDup lemma is true iff x != y *)
+(* And here, x = y *)
+
+
 Admitted.
     
 Lemma ground_maps_add_Subset  :

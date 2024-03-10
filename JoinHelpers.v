@@ -1,6 +1,6 @@
-From Coq Require Import List String Arith Psatz Lists.ListSet.
+From Coq Require Import List String Arith Psatz Lists.ListSet Logic.Classical_Prop.
 
-From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps MonotonicityTheorems GroundMapsHelpers HelperTactics.
+From VeriFGH Require Import DatalogProps DatalogSemantics GroundMaps MonotonicityTheorems GroundMapsHelpers HelperTactics OrderedGroundTypes.
 
 Local Open Scope string_scope.
 Local Open Scope list_scope.
@@ -22,13 +22,76 @@ Inductive check_join_vars_rel : list string -> tup_type -> tup_type ->
     v1 = v2 ->
     check_join_vars_rel (j :: jvs) t1 t2.
 
+Lemma fold_left_false:
+forall jvs t1 t2,
+fold_left
+      (fun (acc : bool) (elmt : string) =>
+       if acc
+       then
+        match assoc_lookup t1 elmt with
+        | Some g1 =>
+            match assoc_lookup t2 elmt with
+            | Some g2 =>
+                if Ground_Types_as_OTF.eq_dec g1 g2
+                then true
+                else false
+            | None => false
+            end
+        | None => false
+        end
+       else false) jvs false = false.
+Proof.
+  induction jvs. simpl; intros; eauto. 
+  simpl; eauto.
+Qed.
+
 (* TODO *)
 Lemma check_join_vars_adequacy :
   forall (jvs: list string) (t1 t2: tup_type),
     check_join_vars_rel jvs t1 t2 <->
       check_join_vars jvs t1 t2 = true.
 Proof.
-Admitted.
+  induction jvs; intros; split; intro.
+  - unfold check_join_vars. simpl; eauto.
+  - econstructor.
+  - inversion H; subst. unfold check_join_vars; simpl. 
+    specialize (IHjvs t1 t2). destruct IHjvs. specialize (H0 H2).
+    specialize (assoc_lookup_adequacy t1 a v2). intro. destruct H5.
+    specialize (H5 H3). rewrite <- H5. 
+    specialize (assoc_lookup_adequacy t2 a v2). intro. destruct H7.
+    specialize (H7 H4). rewrite <- H7.
+    destruct (Ground_Types_as_OTF.eq_dec v2 v2).
+    eauto. destruct n; eauto.
+  - unfold check_join_vars in H. simpl in H. 
+    specialize (IHjvs t1 t2). destruct IHjvs.
+    remember (match assoc_lookup t1 a with
+    | Some g1 =>
+        match assoc_lookup t2 a with
+        | Some g2 =>
+            if Ground_Types_as_OTF.eq_dec g1 g2
+            then true
+            else false
+        | None => false
+        end
+    | None => false
+    end ).
+    remember (assoc_lookup t1 a).
+    remember (assoc_lookup t2 a).
+    destruct b; destruct o; destruct o0. 
+    + econstructor.
+      eapply H1. eauto. eapply assoc_lookup_adequacy. exact Heqo.
+      eapply assoc_lookup_adequacy. exact Heqo0.
+      destruct (Ground_Types_as_OTF.eq_dec g g0); eauto.
+      inversion Heqb.
+    + inversion Heqb.
+    + inversion Heqb.
+    + inversion Heqb.
+    + erewrite fold_left_false in H. inversion H.
+    + erewrite fold_left_false in H. inversion H.
+    + erewrite fold_left_false in H. inversion H.
+    + erewrite fold_left_false in H. inversion H.
+Qed.
+
 
 Inductive get_vars_set_rel : tup_type -> string_sets.t -> Prop :=
 | get_vars_assoc_empty :
@@ -575,12 +638,59 @@ Proof.
     + reflexivity.
 Qed.
 
+Lemma match_order_fine:
+forall t1 a t2,
+match assoc_lookup t1 a with
+  | Some g1 =>
+      match assoc_lookup t2 a with
+      | Some g2 =>
+          if Ground_Types_as_OTF.eq_dec g1 g2
+          then true
+          else false
+      | None => false
+      end
+  | None => false
+  end = match assoc_lookup t2 a with
+  | Some g1 =>
+      match assoc_lookup t1 a with
+      | Some g2 =>
+          if Ground_Types_as_OTF.eq_dec g1 g2
+          then true
+          else false
+      | None => false
+      end
+  | None => false
+  end.
+Proof.
+  intros. remember (assoc_lookup t1 a). remember (assoc_lookup t2 a).
+  destruct o; destruct o0.
+  destruct (Ground_Types_as_OTF.eq_dec g g0); destruct (Ground_Types_as_OTF.eq_dec g0 g); eauto.
+  destruct n; eauto. eauto. eauto. eauto.
+Qed.
+  
+
 (* TODO *)
 Lemma check_join_vars_symmetric :
   forall (jvs: list string) (t1 t2: tup_type),
     check_join_vars jvs t1 t2 = check_join_vars jvs t2 t1.
 Proof.
-Admitted.
+  induction jvs; intros.
+  - unfold check_join_vars. simpl; eauto.
+  - unfold check_join_vars. simpl.
+    remember (match assoc_lookup t1 a with
+    | Some g1 =>
+        match assoc_lookup t2 a with
+        | Some g2 =>
+            if Ground_Types_as_OTF.eq_dec g1 g2
+            then true
+            else false
+        | None => false
+        end
+    | None => false
+    end). destruct b; erewrite match_order_fine; rewrite <- Heqb. eauto.
+    erewrite fold_left_false. erewrite fold_left_false; eauto.
+Qed. 
+
 
 (* TODO, may also need a second pair of eyes to make sure
  * that this is reasonable  *)
@@ -635,12 +745,30 @@ Proof.
         destruct (check_join_vars jvs (a :: t1) t2) eqn:C.
         -- eapply check_join_vars_adequacy in C. invs C.
            ++ congruence.
-           ++ invs C.
+           ++ invs C. 
               eapply assoc_lookup_adequacy in H1, H2, H6, H7.
               rewrite H2 in H1.
-              (* This is definitely true, but will i have time to finish it? *)
-Admitted.
+              eapply IHt1; eauto. unfold join_tuples_joined.
+              (* unfold check_join_vars.
+              specialize (In_dec string_dec j jvs0); intro.
+              destruct H3. unfold string_sets.fold in JJ1, JJ.
+              erewrite rewite_rule2 in JJ1, JJ. rewrite JJ in JJ1.
+
+              remember (list_to_string_set (j :: jvs0)).
+              unfold string_sets.fold in JJ1, JJ.
+              destruct (string_sets.this t). admit.
+              simpl in JJ1, JJ.
+              destruct t.this.
+              unfold string_sets.add in JJ1. simpl in JJ1.
+              remember (j::jvs0).
+              simpl in JJ1, JJ. 
               
+              (* This is definitely true, but will i have time to finish it? *)
+              simpl in JJ.  *)
+              
+
+Admitted.
+
 Lemma set_prod_nil_left :
   forall (g: set tup_type),
     set_prod (@nil tup_type) g = nil.
@@ -711,11 +839,46 @@ Proof.
     reflexivity.
     eapply list_set_equality.
     simpl. split; intros.
+    unfold set_In in H. specialize (in_app_or _ _ _ H); intro. 
+    destruct H0. right. unfold set_In. eapply in_or_app. eauto.
+    simpl in H0. destruct H0; eauto. right. eapply in_or_app; eauto.
+    unfold set_In in *. eapply in_or_app; simpl. destruct H; eauto.
+    specialize (in_app_or _ _ _ H); intro. destruct H0; eauto.
+Qed.
+Lemma switch_helper:
+forall jvs a g2 init,
+fold_left
+  (fun (acc : set tup_type) (elmt : tup_type * tup_type)
+   =>
+   let (t1, t2) := elmt in
+   match join_tuples jvs t1 t2 with
+   | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+   | None => acc
+   end) (set_prod (a :: nil) g2)
+  init =
+fold_left
+  (fun (acc : set tup_type) (elmt : tup_type * tup_type)
+   =>
+   let (t1, t2) := elmt in
+   match join_tuples jvs t1 t2 with
+   | Some tup => set_add str_gt_list_ot.eq_dec tup acc
+   | None => acc
+   end) (set_prod g2 (a :: nil))
+  init.
+Proof.
+  intros. revert init. induction g2. 
+  - simpl; eauto.
+  - intros.
+    assert ((set_prod (a::nil) (a0 :: g2)) = (a,a0) :: (list_prod (a::nil) g2)).
+    eauto. rewrite H.
+    assert ((set_prod (a0::g2) (a :: nil)) = (a0,a) :: (list_prod (g2) (a::nil))).
+    eauto. rewrite H0.
+    simpl. fold tup_type. erewrite <- app_nil_end.
+    replace (map (fun y : tup_type => (a, y)) g2) with (set_prod (a :: nil) g2).
+    erewrite IHg2. erewrite join_tuples_symmetric. eauto.
+    admit. (* didn't handle nil case of jvs *)
+    unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
 Admitted.
-  
-    
-    
-  
 
 (* TODO *)
 Lemma fold_left_switch :
@@ -736,7 +899,7 @@ Lemma fold_left_switch :
          end) (set_prod g2 g1) init.
 Proof.
   induction g1; intros.
-  - rewrite set_prod_nil_right. rewrite set_prod_nil_left. reflexivity.
+  - rewrite set_prod_nil_right. rewrite set_prod_nil_left. reflexivity.  
   - Opaque join_tuples. simpl.
     rewrite fold_left_app.
     rewrite IHg1.
@@ -748,7 +911,7 @@ Proof.
         rewrite fold_left_app. rewrite set_prod_cons_right.
         rewrite fold_left_app.
         rewrite <- IHg1.
-        f_equal.
+        f_equal. fold tup_type.
         replace ((map (fun y : tup_type => (t, y)) g1)) with (set_prod (t:: nil) g1).
         symmetry.
         rewrite <- fold_left_app. symmetry.
@@ -756,9 +919,36 @@ Proof.
         rewrite fold_left_app. f_equal.
         replace (map (fun y : tup_type => (a, y)) g2) with (set_prod (a :: nil) g2).
         replace (map (fun x : tup_type => (x, a)) g2) with (set_prod g2 (a :: nil)).
-        
-Admitted.        
-    
+        simpl. fold tup_type. 
+        replace (map (fun y : tup_type => (a, y)) g2) with (set_prod (a :: nil) g2).
+        rewrite <- app_nil_end.
+        eapply switch_helper.
+        unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
+        unfold set_prod. induction g2. simpl; eauto. simpl. f_equal. eauto. 
+        unfold list_prod. simpl. erewrite app_nil_end; eauto.
+        unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
+      * rewrite fold_left_app. rewrite fold_left_app. rewrite <- IHg1.
+        rewrite fold_left_app. rewrite set_prod_cons_right.
+        rewrite fold_left_app.
+        rewrite <- IHg1.
+        f_equal. fold tup_type.
+        replace ((map (fun y : tup_type => (t, y)) g1)) with (set_prod (t:: nil) g1).
+        symmetry.
+        rewrite <- fold_left_app. symmetry.
+        rewrite fold_left_app_comm.
+        rewrite fold_left_app. f_equal.
+        replace (map (fun y : tup_type => (a, y)) g2) with (set_prod (a :: nil) g2).
+        replace (map (fun x : tup_type => (x, a)) g2) with (set_prod g2 (a :: nil)).
+        simpl. fold tup_type. 
+        replace (map (fun y : tup_type => (a, y)) g2) with (set_prod (a :: nil) g2).
+        rewrite <- app_nil_end.
+        eapply switch_helper.
+        unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
+        unfold set_prod. induction g2. simpl; eauto. simpl. f_equal. eauto. 
+        unfold list_prod. simpl. erewrite app_nil_end; eauto.
+        unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
+      * admit.
+Admitted.
   
   
 Lemma join_relations_symmetric :

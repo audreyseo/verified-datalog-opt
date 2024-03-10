@@ -68,6 +68,140 @@ Proof.
   intros H x y. eapply hedberg_to_UIP. apply (UIP_list_is_hedberg _ H).
 Qed.
 
+(* 
+ * And we can use this for strings 
+ *)
+
+Module UIPAscii.
+  Import Ascii.
+  Lemma ascii_ctor_law1 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> a1 = a2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law2 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> b1 = b2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law3 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> c1 = c2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law4 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> d1 = d2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law5 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> e1 = e2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law6 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> f1 = f2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law7 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> g1 = g2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law8 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2) -> h1 = h2.
+  Proof. intros H; congruence. Qed.
+  Lemma ascii_ctor_law9 (a1 a2 b1 b2 c1 c2 d1 d2 e1 e2 f1 f2 g1 g2 h1 h2: bool) : a1 = a2 -> b1 = b2 -> c1 = c2 -> d1 = d2 -> e1 = e2 -> f1 = f2 -> g1 = g2 -> h1 = h2 -> (Ascii a1 b1 c1 d1 e1 f1 g1 h1) = (Ascii a2 b2 c2 d2 e2 f2 g2 h2).
+  Proof.
+    intros; congruence. Qed.
+
+  Fixpoint UIP_ascii_hedberg (a1 a2: ascii) : a1 = a2 -> a1 = a2.
+  Proof.
+    destruct a1 as [a1 b1 c1 d1 e1 f1 g1 h1]; destruct a2 as [a2 b2 c2 d2 e2 f2 g2 h2]; intros Heq; try (exfalso; congruence).
+    eapply ascii_ctor_law9.
+    - eapply ascii_ctor_law1, Heq.
+    - eapply ascii_ctor_law2, Heq.
+    - eapply ascii_ctor_law3, Heq.
+    - eapply ascii_ctor_law4, Heq.
+    - eapply ascii_ctor_law5, Heq.
+    - eapply ascii_ctor_law6, Heq.
+    - eapply ascii_ctor_law7, Heq.
+    - eapply ascii_ctor_law8, Heq.
+  Defined.
+
+  Lemma UIP_bool :
+    forall (b1 b2: bool)
+      (H1 H2: b1 = b2),
+      H1 = H2.
+  Proof.
+    destruct b1, b2; intros; try congruence.
+    - pose proof (Eqdep_dec.UIP_refl_bool true H1).
+      pose proof (Eqdep_dec.UIP_refl_bool true H2).
+      subst. reflexivity.
+    - pose proof (Eqdep_dec.UIP_refl_bool false H1).
+      pose proof (Eqdep_dec.UIP_refl_bool false H2).
+      subst. reflexivity.
+  Qed.
+  
+  
+
+  Lemma UIP_ascii_is_hedberg : is_hedberg _ (UIP_ascii_hedberg).
+  Proof.
+    intros x y; induction x as [a1 a2 a3 a4 a5 a6 a7 a8] in y|-*; destruct y as [b1 b2 b3 b4 b5 b6 b7 b8]; intros E1 E2; try (exfalso; congruence).
+    cbn. erewrite (UIP_bool _ _ (ascii_ctor_law1 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _  E1)).
+    erewrite (UIP_bool _ _ (ascii_ctor_law2 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E1)).
+    erewrite (UIP_bool _ _ (ascii_ctor_law3 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E1)).
+    erewrite (UIP_bool _ _ (ascii_ctor_law4 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E1)).
+    erewrite (UIP_bool _ _ (ascii_ctor_law5 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E1)).
+    erewrite (UIP_bool _ _ (ascii_ctor_law6 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E1)).
+    erewrite (UIP_bool _ _ (ascii_ctor_law7 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E1)).
+    erewrite (UIP_bool _ _ (ascii_ctor_law8 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ E1)).
+    f_equal.
+  Qed.
+
+  Lemma UIP_ascii :
+    UIP ascii.
+  Proof.
+    unfold UIP.
+    intros. eapply hedberg_to_UIP.
+    eapply UIP_ascii_is_hedberg.
+  Qed.
+
+  Lemma UIP_ascii_refl :
+    forall (a: ascii)
+      (H: a = a),
+      H = eq_refl.
+  Proof.
+    intros. eapply UIP_ascii.
+  Qed.
+End UIPAscii.
+      
+                                                                                   
+
+From Coq Require Import String.
+
+Print string.
+
+Lemma string_ctor_law1 (h1 h2 : Ascii.ascii) (t1 t2 : string) : (String h1 t1) = (String h2 t2) -> h1 = h2.
+Proof. intros H; congruence. Qed.
+Lemma string_ctor_law2 (h1 h2 : Ascii.ascii) (t1 t2 : string) : (String h1 t1) = (String h2 t2) -> t1 = t2.
+Proof. intros H; congruence. Qed.
+Lemma string_ctor_law3(h1 h2 : Ascii.ascii) (t1 t2 : string) : h1 = h2 -> t1 = t2 -> (String h1 t1) = (String h2 t2).
+Proof. intros H1 H2; congruence. Qed.
+
+Fixpoint UIP_string_hedberg (l1 l2 : string) : l1 = l2 -> l1 = l2.
+Proof.
+  destruct l1 as [|l1h l1t]; destruct l2 as [|l2h l2t]; intros Heq; try (exfalso; congruence).
+  - reflexivity.
+  - apply string_ctor_law3.
+    + eapply string_ctor_law1, Heq.
+    + eapply (UIP_string_hedberg _), string_ctor_law2, Heq.
+Defined.
+
+
+
+Lemma UIP_string_is_hedberg : is_hedberg _ (UIP_string_hedberg).
+Proof.
+  intros x y; induction x as [|xh xr IH] in y|-*; destruct y as [|yh yr]; intros E1 E2; try (exfalso; congruence).
+  - cbn. easy.
+  - cbn.
+    erewrite (UIPAscii.UIP_ascii _ _ (string_ctor_law1 xh yh xr yr E1)).
+    erewrite (IH _ (string_ctor_law2 xh yh xr yr E1)).
+    reflexivity.
+Qed.
+
+Lemma UIP_string : UIP string.
+Proof.
+  intros x y. eapply hedberg_to_UIP. apply (UIP_string_is_hedberg).
+Qed.
+
+Lemma UIP_string_refl :
+  forall (s: string)
+    (H: s = s),
+    H = eq_refl.
+Proof.
+  intros. eapply UIP_string.
+Qed.
+
 (*
  * We can use a similar approach for pairs (new code from here on out)
  *)

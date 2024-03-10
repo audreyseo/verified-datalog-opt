@@ -474,6 +474,29 @@ Proof.
       * inversion H3.
 Qed.
 
+(* copied from MonotonicityTheorems *)
+Lemma proj_relation_fold_None_helper :
+forall pvs v init,
+proj_relation pvs v = None <-> 
+set_fold_left
+  (fun (acc : option (set tup_type)) (elmt : tup_type) =>
+   match proj_tuples pvs elmt with
+   | Some tup => option_map (set_add str_gt_list_ot.eq_dec tup) acc
+   | None => None
+   end) v (Some init) = None.
+Proof.
+induction v; split; intros.
+- simpl in H. invs H.
+- simpl in H. invs H.
+- Opaque proj_tuples. simpl in H. destruct (proj_tuples pvs a) eqn:A.
+  + unfold tup_type in *. eapply IHv in H. simpl.
+    rewrite A. eapply IHv. eassumption.
+  + simpl. rewrite A. rewrite H. reflexivity.
+- simpl in H. simpl. destruct (proj_tuples pvs a) eqn:A.
+  + eapply IHv in H. eapply IHv. eassumption.
+  + eassumption.
+Qed.
+
 (* TODO *)
 Lemma proj_relation_fold_Some :
   forall v pvs v' init,
@@ -487,7 +510,14 @@ Lemma proj_relation_fold_Some :
     exists v'',
       Some v'' = proj_relation pvs v.
 Proof.
-Admitted.
+  intros.
+  specialize (proj_relation_fold_None_helper pvs v init).
+  intro. destruct H0.
+  destruct (proj_relation pvs v).
+  - exists s; eauto.
+  - assert ((None: option (set tup_type)) = None) by eauto.
+    specialize (H0 H2). rewrite H0 in H. inversion H.
+Qed.
 
 Lemma proj_relation_fold_None :
   forall v pvs,

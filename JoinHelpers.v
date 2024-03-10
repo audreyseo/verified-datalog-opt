@@ -694,7 +694,7 @@ Qed.
 
 (* TODO, may also need a second pair of eyes to make sure
  * that this is reasonable  *)
-Lemma join_tuples_symmetric :
+Lemma join_tuples_symmetric_nonnil :
   forall (jvs: list string) (t1 t2: tup_type),
     forall (NonNil: jvs <> nil),
     join_tuples jvs t1 t2 = join_tuples jvs t2 t1.
@@ -768,6 +768,73 @@ Proof.
               
 
 Admitted.
+
+Lemma join_tuples_symmetric_nil :
+  forall (t1 t2: tup_type),
+    join_tuples nil t1 t2 = join_tuples nil t2 t1.
+Proof.
+  induction t1.
+  - intros. simpl. destruct (string_sets.fold
+  (fun (elmt : string_sets.elt)
+     (acc : option (list (string_sets.elt * ground_types))) =>
+   match assoc_lookup t2 elmt with
+   | Some g => option_map (cons (elmt, g)) acc
+   | None => None
+   end) (string_sets.diff (get_vars_set t2) string_sets.empty)
+  (Some nil)). f_equal. eapply app_nil_end. eauto.
+  - intros. simpl. unfold join_tuples in IHt1.
+    unfold check_join_vars in IHt1. simpl in IHt1.
+    unfold string_sets.fold.
+    assert (forall x, (string_sets.this
+    (string_sets.diff x string_sets.empty)) = (string_sets.this) x).
+    simpl; eauto.
+    rewrite (H (get_vars_set t2)). rewrite (H (get_vars_set (a :: t1))).
+    simpl.
+    destruct (  string_sets.Raw.fold
+    (fun (elmt : string_sets.elt)
+       (acc : option (list (string_sets.elt * ground_types))) =>
+     match
+       (let (hd_name, hd_gt) := a in
+        if string_dec elmt hd_name
+        then Some hd_gt
+        else assoc_lookup t1 elmt)
+     with
+     | Some g => option_map (cons (elmt, g)) acc
+     | None => None
+     end) (string_sets.this (get_vars_set (a :: t1))) 
+    (Some nil)) eqn:A. 
+    unfold get_vars_set in A. simpl in A.
+    destruct (string_sets.Raw.fold
+    (fun (elmt : string_sets.elt)
+       (acc : option (list (string_sets.elt * ground_types))) =>
+     match assoc_lookup t2 elmt with
+     | Some g => option_map (cons (elmt, g)) acc
+     | None => None
+     end) (string_sets.this (get_vars_set t2)) 
+    (Some nil)). f_equal.
+    eapply list_set_equality. 
+    simpl. unfold set_In. split; intros; eapply in_or_app.
+    specialize (in_app_or _ _ _ H0). intro. destruct H1; eauto.
+    specialize (in_app_or _ _ _ H0). intro. destruct H1; eauto.
+    eauto.
+    destruct (string_sets.Raw.fold
+    (fun (elmt : string_sets.elt)
+       (acc : option (list (string_sets.elt * ground_types))) =>
+     match assoc_lookup t2 elmt with
+     | Some g => option_map (cons (elmt, g)) acc
+     | None => None
+     end) (string_sets.this (get_vars_set t2)) 
+    (Some nil)); eauto.
+Qed.
+
+Lemma join_tuples_symmetric:
+forall (jvs: list string) (t1 t2: tup_type),
+    join_tuples jvs t1 t2 = join_tuples jvs t2 t1.
+Proof.
+  intros. destruct jvs.
+  eapply join_tuples_symmetric_nil.
+  eapply join_tuples_symmetric_nonnil. congruence.
+Qed. 
 
 Lemma set_prod_nil_left :
   forall (g: set tup_type),
@@ -876,9 +943,8 @@ Proof.
     simpl. fold tup_type. erewrite <- app_nil_end.
     replace (map (fun y : tup_type => (a, y)) g2) with (set_prod (a :: nil) g2).
     erewrite IHg2. erewrite join_tuples_symmetric. eauto.
-    admit. (* didn't handle nil case of jvs *)
     unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
-Admitted.
+Qed.
 
 (* TODO *)
 Lemma fold_left_switch :
@@ -947,9 +1013,7 @@ Proof.
         unfold set_prod. induction g2. simpl; eauto. simpl. f_equal. eauto. 
         unfold list_prod. simpl. erewrite app_nil_end; eauto.
         unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
-      * admit.
-Admitted.
-  
+Qed.
   
 Lemma join_relations_symmetric :
   forall (jvs: list string) (g1 g2: set tup_type),

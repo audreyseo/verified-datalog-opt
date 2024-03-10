@@ -61,6 +61,13 @@ Fixpoint list_to_string_set (l: list string) :=
 
 Module List_String_OTF := List_as_OTF(String_OTF).
 
+Structure program :=
+  DlProgram
+    { idbs: string_sets.t;
+      edbs: string_sets.t;
+      answer: rel;
+      rules: list rule;
+    }.
 
 Module Safety.
 
@@ -99,8 +106,9 @@ Module Safety.
   Definition rule_safe (r: rule) : bool :=
     match r with
     | rule_def_empty hd =>
-        andb (Nat.eqb (num_args hd) 0)
-             (safe_rel hd)
+        if Nat.eq_dec (num_args hd) 0 then
+          safe_rel hd
+        else false 
     | rule_def hd body =>
         andb (forallb (in_at_least_one_rel body) (args_list hd))
              (andb (safe_rel hd)
@@ -132,7 +140,7 @@ Module Safety.
   | exists_def_is_safe :
     forall (head: rel) (e_vars: string_sets.t) (body: list rel),
       rel_is_safe head ->
-      Forall (fun r => rel_is_safe r) body ->
+      Forall (rel_is_safe) body ->
       Forall (fun v => Exists (fun r => In v (args_list r)) body) (args_list head) ->
       string_sets.For_all (fun v => Exists (fun r => In v (args_list r)) body) e_vars ->
       rule_safe_rel (rule_def_exists head e_vars body).
@@ -146,29 +154,23 @@ Module Safety.
   Qed.
 
 
+
   Lemma in_at_least_one_rel_adequacy :
     forall body h,
-      Forall rel_is_safe body ->
       Exists (fun r : rel => In h (args_list r)) body <->
         in_at_least_one_rel body h = true.
   Proof.
     induction body; split; intros.
-    - invs H0.
-    - simpl in H0. congruence.
-    - invs H. invs H0.
-      + simpl.
-        destruct (args_list a).
-        * invs H2.
-        * eapply ListSet.set_mem_correct2 in H2.
-          rewrite H2. reflexivity.
-      + simpl.
-        eapply Bool.orb_true_iff.
-        right. eapply IHbody; eauto.
-    - simpl in H0. invs H.
-      eapply Bool.orb_true_iff in H0.
-      destruct H0.
+    - invs H.
+    - simpl in H. invs H.
+    - simpl. eapply Bool.orb_true_iff.
+      invs H.
+      + left. eapply ListSet.set_mem_correct2. eauto.
+      + right. eapply IHbody. eauto.
+    - simpl in H. eapply Bool.orb_true_iff in H.
+      destruct H.
       + left. eapply ListSet.set_mem_correct1. eauto.
-      + right. eapply IHbody; eauto.
+      + right. eapply IHbody. eauto.
   Qed.
 
   Lemma safe_body_adequacy :
@@ -191,245 +193,213 @@ Module Safety.
       + simpl. eauto.
       + eapply IHbody. eauto.
   Qed.
+
+  Lemma forall_head_args_in_at_least_one_rel_adequacy :
+    forall head_args body,
+      Forall
+        (fun v : String_as_OT.t =>
+           Exists (fun r : rel => In v (args_list r)) body)
+        head_args <->
+        forallb (in_at_least_one_rel body) head_args = true.
+  Proof.
+    induction head_args; split; intros.
+    - reflexivity.
+    - econstructor.
+    - invs H.
+      simpl. eapply Bool.andb_true_iff. split.
+      eapply in_at_least_one_rel_adequacy; eauto.
+      eapply IHhead_args. eauto.
+    - simpl in H. eapply Bool.andb_true_iff in H. destruct H.
+      econstructor.
+      eapply in_at_least_one_rel_adequacy; eauto.
+      eapply IHhead_args; eauto.
+  Qed.
+
+  (* Print string_sets.for_all. *)
+  Arguments string_sets.for_all f%function_scope s/.
+
+  (* Print string_sets.For_all. *)
+  Arguments string_sets.For_all P%function_scope s/.
+
+  Lemma forall_evars_in_at_least_one_rel_adequacy :
+    forall evars body,
+      string_sets.For_all
+        (fun v : String_as_OT.t =>
+           Exists (fun r : rel => In v (args_list r)) body)
+        evars <->
+        string_sets.for_all (in_at_least_one_rel body) evars = true.
+  Proof.
+    destruct evars.
+    rename this into s. induction s; split; intros.
+    - reflexivity.
+    - unfold string_sets.For_all. intros.
+      invs H0.
+    - simpl. simpl in H. destruct (in_at_least_one_rel body a) eqn:B.
+      + eapply IHs. simpl. intros. eapply H.
+        right. eauto.
+      + assert (string_sets.In a {| string_sets.this := a :: s;
+                                   string_sets.is_ok := is_ok |}) by (left; reflexivity).
+        eapply H in H0. eapply in_at_least_one_rel_adequacy in H0. congruence.
+    - simpl in H. destruct (in_at_least_one_rel body a) eqn:B; try congruence.
+      simpl. intros. unfold string_sets.In in H0. simpl in H0. unfold string_sets.Raw.In in H0. invs H0.
+      + eapply in_at_least_one_rel_adequacy; eauto.
+      + eapply IHs. eauto. eauto.
+        Unshelve.
+        all: invs is_ok; eauto.
+  Qed.
+        
       
-  
+      
+
   Lemma rule_safe_adequacy :
     forall (r: rule),
       rule_safe_rel r <->
         rule_safe r = true.
   Proof.
     destruct r; split; intros.
-    - invs H. simpl.
-      simpl in H2. rewrite H2.
-      rewrite H1. simpl.
-      match goal with
-      | [ |- (if ?a then true else false) = true ] =>
-          destruct (a) eqn:A; try congruence
-      end.
+    - invs H.
+      simpl.
+      destruct (Nat.eq_dec (num_args head) 0); try congruence.
+      simpl in H2. destruct (List_String_OTF.eq_dec (Vector.to_list (args head)) (args_list head)); try congruence.
     - simpl in H.
-      eapply Bool.andb_true_iff in H. destruct H.
+      destruct (Nat.eq_dec (num_args head) 0); try congruence.
       destruct (List_String_OTF.eq_dec (Vector.to_list (args head)) (args_list head)); try congruence.
+      econstructor; eauto.
+    - invs H.
+      simpl. destruct (List_String_OTF.eq_dec (Vector.to_list (args head)) (args_list head)).
+      + simpl. eapply Bool.andb_true_iff.
+        split.
+        * eapply forall_head_args_in_at_least_one_rel_adequacy. eauto.
+        * eapply safe_body_adequacy;  eauto.
+      + simpl in H2. congruence.
+    - simpl in H. eapply Bool.andb_true_iff in H. destruct H.
+      destruct (List_String_OTF.eq_dec (Vector.to_list (args head)) (args_list head)); simpl in H0; try congruence.
       econstructor.
-
-      eapply Nat.eqb_eq in H. eauto.
       simpl. eauto.
+      eapply safe_body_adequacy.
+      eauto.
+      eapply forall_head_args_in_at_least_one_rel_adequacy; eauto.
     - simpl. invs H.
-      simpl in H2. rewrite H2.
-      clear H2.
-      clear H.
-      revert H4 H3.
-      remember (args_list head) as hd.
-      clear Heqhd.
-      clear head.
-      
-      revert body. induction hd; intros.
-      + simpl.
-        clear H4. invs H3.
-        simpl. reflexivity.
-        simpl. eapply safe_rel_adequacy in H.
-        simpl in H.
-        destruct (List_String_OTF.eq_dec (Vector.to_list (args x)) (args_list x)); try congruence.
-        simpl.
-        revert H0. clear e. clear H3. clear H.
-        induction l; intros.
-        * simpl. reflexivity.
-        * invs H0. eapply IHl in H3. eapply safe_rel_adequacy in H2.
-          Opaque safe_rel.
-          simpl.
-          rewrite H2. rewrite H3. reflexivity.
-      + invs H4.
-        pose proof (IHhd body H2 H3).
-        Opaque in_at_least_one_rel.
-        eapply Bool.andb_true_iff in H. destruct H.
-        eapply Bool.andb_true_iff in H0. destruct H0.
-        simpl.
-        invs H4.
-        destruct (in_at_least_one_rel body a) eqn:A.
-        * Transparent in_at_least_one_rel.
-          simpl in A. unfold in_at_least_one_rel in A.
-          simpl.
-          rewrite H. simpl.
-          destruct (List_String_OTF.eq_dec hd hd); try congruence.
-          destruct (String_OTF.eq_dec a a); try congruence.
-          rewrite (UIP_string_refl _ e0).
-          eapply Bool.andb_true_iff. split.
-          -- match goal with
-             | [ |- (if ?a then true else false) = true ] =>
-                 destruct (a) eqn:A'; try congruence
-             end.
-          -- eauto.
-        * simpl.
-          eapply in_at_least_one_rel_adequacy in H1. congruence.
-          eauto.
+      eapply Bool.andb_true_iff.
+      split; [ eapply forall_head_args_in_at_least_one_rel_adequacy; eauto | .. ].
+      eapply Bool.andb_true_iff.
+      split.
+      + eapply forall_evars_in_at_least_one_rel_adequacy. eauto.
+      + simpl in H3. rewrite H3. destruct (List_String_OTF.eq_dec (args_list head) (args_list head)); try congruence. simpl. eapply safe_body_adequacy. eauto.
     - simpl in H. eapply Bool.andb_true_iff in H. destruct H.
       eapply Bool.andb_true_iff in H0. destruct H0.
-      destruct (args_list head) eqn:ARGS;
-     
-        econstructor; try eapply safe_rel_adequacy; eauto.
-      + clear H. clear H0. revert H1. clear ARGS. induction body; intros; try econstructor.
-        simpl in H1. eapply Bool.andb_true_iff in H1.
-        destruct H1. eapply safe_rel_adequacy; eauto.
-        simpl in H1. eapply Bool.andb_true_iff in H1. destruct H1. eapply IHbody. eauto.
-      + rewrite ARGS in *. econstructor.
-      + revert H1. clear H. clear H0. clear ARGS. clear l. clear t. induction body; intros; econstructor.
-        simpl in H1. eapply Bool.andb_true_iff in H1. destruct H1.
-        eapply safe_rel_adequacy. eauto.
-        simpl in H1. eapply Bool.andb_true_iff in H1. destruct H1. eapply IHbody. eauto.
-      + rewrite ARGS in *. simpl in H.
-        eapply Bool.andb_true_iff in H. destruct H.
-        econstructor.
-        * eapply in_at_least_one_rel_adequacy; eauto.
-          revert H1. clear.
-          induction body; intros; econstructor.
-          simpl in H1. eapply safe_rel_adequacy.
-          eapply Bool.andb_true_iff in H1. destruct H1. eauto.
-          eapply IHbody.
-          simpl in H1. eapply Bool.andb_true_iff in H1. eapply H1.
-        * revert H2. clear H0. revert H1.
-          clear H. clear ARGS. clear.
-          revert body. induction l; intros.
-          -- econstructor.
-          -- simpl in H2. eapply Bool.andb_true_iff in H2. destruct H2.
-             econstructor.
-             ++ eapply in_at_least_one_rel_adequacy.
-                eapply safe_body_adequacy.
-                eauto.
-                eauto.
-             ++ eapply IHl. eauto. eauto.
-    - simpl. eapply Bool.andb_true_iff. invs H.
-      clear H.
-      split.
-      + clear H5.
-        clear H3.
-        revert H4. revert H6. clear.
-        revert body.
-        destruct (args_list head).
-        clear head.
-        * intros.
-          reflexivity.
-        * induction l0; intros.
-          -- simpl. invs H4. eapply Bool.andb_true_iff; split; eauto.
-             destruct l.
-             simpl. unfold string_sets.For_all in *.
-             destruct this.
-             (*
-             eapply in_at_least_one_rel_adequacy; eauto.
-             eauto. eauto.
-          -- simpl. invs H4. invs H2.
-             rewrite Bool.andb_comm.
-             rewrite <- Bool.andb_assoc.
-             eapply Bool.andb_true_iff.
-             split; try eapply in_at_least_one_rel_adequacy; eauto.
-             rewrite Bool.andb_comm. eapply IHl.
-             eauto.
-             econstructor; eauto.
-      + eapply Bool.andb_true_iff.
-        split.
-        * clear H4. revert H5. revert H3. revert body. destruct l.
-          induction this; intros.
-          -- reflexivity.
-          -- unfold string_sets.for_all. simpl.
-             unfold string_sets.For_all in H5.
-             assert (string_sets.In a {| string_sets.this := a :: this;
-                                        string_sets.is_ok := is_ok |}).
-             unfold string_sets.In. left. reflexivity.
-             pose proof (H5' := H5).
-             specialize (H5 _ H).
-             eapply in_at_least_one_rel_adequacy in H5; eauto.
-             rewrite H5.
-             eapply IHthis.
-             eauto.
-             unfold string_sets.For_all. intros.
-             eapply H5'.
-             right. eauto.
-        * eapply Bool.andb_true_iff.
-          
-             
-             
-             
-             ++ 
-        induction hd; intros.
-        * reflexivity.
-        * invs H4. simpl. eapply Bool.andb_true_iff.
-          split.
-          -- eapply in_at_least_one_rel_adequacy.
-             eauto. eauto.
-          -- eapply IHhd.
-             
-                eapply 
-             
-                                         
-          
-          
-          
-        
+      destruct (List_String_OTF.eq_dec (Vector.to_list (args head)) (args_list head)) eqn:B; simpl in H1; try congruence.
+      econstructor; eauto.
+      eapply safe_body_adequacy; eauto.
+      eapply forall_head_args_in_at_least_one_rel_adequacy; eauto.
+      eapply forall_evars_in_at_least_one_rel_adequacy; eauto.
+  Qed.
+
+  Definition safe_program (p: program) :=
+    andb (orb (string_sets.mem (name (answer p)) (idbs p))
+              (string_sets.mem (name (answer p)) (edbs p)))
+         (andb (forallb (rule_safe) (rules p))
+               (safe_rel (answer p))).
+
+  Definition safe_program_rel (p: program) :=
+    (string_sets.In (name (answer p)) (idbs p) \/
+       string_sets.In (name (answer p)) (edbs p)) /\
+      (Forall rule_safe_rel (rules p)) /\
+      (rel_is_safe (answer p)).
+
+  Ltac revert_all :=
+    repeat match goal with
+           | [H: _ |- _ ] =>
+               revert dependent H
+           end.
+               
+
+  Lemma forall_rule_safe_adequacy' :
+    forall (rulez: list rule),
+      Forall rule_safe_rel rulez <->
+        forallb rule_safe rulez = true.
+  Proof.
+    Opaque rule_safe.
+    induction rulez; split; intros; simpl in *; eauto; try match goal with
+                                    | [ H: andb _ _ = true |- _ ] =>
+                                        eapply Bool.andb_true_iff in H; destruct H
+                                    | [ |- andb _ _ = true ] =>
+                                        eapply Bool.andb_true_iff
+                                                      end.
+    - invs H. eapply rule_safe_adequacy in H2. split; eauto.
+      eapply IHrulez; eauto.
+    - eapply rule_safe_adequacy in H. econstructor; try eapply IHrulez; eauto.
+  Qed.
+  
+  Lemma forall_rule_safe_adequacy :
+    forall (p: program),
+      Forall rule_safe_rel (rules p) <->
+        forallb rule_safe (rules p) = true.
+  Proof.
+    intros. eapply forall_rule_safe_adequacy'.
+  Qed.
+
+  Lemma in_idbs_or_edbs_adequacy' :
+    forall (idbs edbs: string_sets.t) (s: string),
+      (string_sets.In s idbs \/
+         string_sets.In s edbs) <->
+        orb (string_sets.mem s idbs)
+            (string_sets.mem s edbs) = true.
+  Proof.
+    split; intros.
+    - eapply Bool.orb_true_iff. destruct H.
+      + left. revert_all; induction idbs0; intros; try eapply string_sets.mem_spec; eauto.
+      + right. revert_all; induction edbs0; intros; try eapply string_sets.mem_spec; eauto.
+    - eapply Bool.orb_true_iff in H. destruct H; [ left | right ]; revert_all; [induction idbs0 | induction edbs0]; intros; try eapply string_sets.mem_spec; eauto.
+  Qed.
         
 
-      revert H; induction body; intros; try (solve [econstructor ]).
-      + simpl in H1.
-        eapply Bool.andb_true_iff in H1. destruct H1.
-        econstructor; eauto.
-        eapply safe_rel_adequacy.
-        eauto.
-      + simpl in H. rewrite ARGS. econstructor.
-      + rewrite ARGS in *.
-        econstructor.
-      + simpl. simpl in H.
-        eapply Bool.andb_true_iff in H. destruct H.
-        eapply Bool.orb_true_iff in H. destruct H.
-        * 
-      + simpl in H1.
-        eapply Bool.andb_true_iff in H1.
+  Lemma in_idbs_or_edbs_adequacy :
+    forall (p: program),
+      (string_sets.In (name (answer p)) (idbs p) \/
+         string_sets.In (name (answer p)) (edbs p)) <->
+        orb (string_sets.mem (name (answer p)) (idbs p))
+            (string_sets.mem (name (answer p)) (edbs p)) = true.
+  Proof.
+    intros. eapply in_idbs_or_edbs_adequacy'.
+  Qed.
+
+  Arguments safe_program p/.
+
+  Lemma safe_program_adequacy :
+    forall (p: program),
+      safe_program_rel p <->
+        safe_program p = true.
+  Proof.
+    destruct p. Opaque safe_rel. simpl.
+    split.
+    - intros. eapply Bool.andb_true_iff.
+      split.
+      + eapply in_idbs_or_edbs_adequacy'. invs H. eauto.
+      + invs H. simpl in *. eapply Bool.andb_true_iff.
         destruct H1.
+        split.
+        eapply forall_rule_safe_adequacy'; eauto.
+        invs H. simpl in *. eapply safe_rel_adequacy. eauto.
+    - intros.
+      repeat match goal with
+             | [ H: andb _ _ = true |- _ ] =>
+                 eapply Bool.andb_true_iff in H; destruct H
+             end.
+      eapply in_idbs_or_edbs_adequacy' in H. eapply forall_rule_safe_adequacy' in H0. eapply safe_rel_adequacy in H1.
+      econstructor; eauto.
+  Qed.
         
-        econstructor.
-        eapply safe_rel_adequacy. eauto.
-        eapply IHbody.
-        reflexivity.
-        eauto.
-      + rewrite ARGS. econstructor.
-      + rewrite ARGS. econstructor.
-      + simpl in H1. eapply Bool.andb_true_iff in H1. destruct H1.
-        econstructor.
-        eapply safe_rel_adequacy. eauto.
-        eapply 
-      + simpl in H1. eapply Bool.andb_true_iff in H1. destruct H1.
-        econstructor.
-        eapply safe_rel_adequacy. eauto.
-        eapply IHbody.
-        unfold in_at_least_one_rel in H.
-        destruct (args_list head) eqn:A.*)
-  Admitted.
 End Safety.
 
   
       
 
 
-(* (* Not sure if this is the correct formalization of this, actually *) *)
-(* Definition safe_rule (r: rule) := *)
-(*   match r with *)
-(*   | rule_def_empty head => true *)
-(*   | rule_def head body => *)
-(*       let bargs := body_args body in *)
-(*       let hargs := vector_to_string_set (args head) in *)
-(*       string_sets.equal bargs hargs *)
-(*   | rule_def_exists head exists_args body => *)
-(*       let hargs := vector_to_string_set (args head) in *)
-(*       let bargs := body_args body in *)
-(*       let eargs := exists_args in *)
-(*       string_sets.equal (string_sets.union hargs eargs) bargs *)
-(*   end. *)
 
 
+      
 
-Structure program :=
-  DlProgram
-    { idbs: string_sets.t;
-      edbs: string_sets.t;
-      answer: rel;
-      rules: list rule;
-    }.
 
 
 Module DatalogNotation.

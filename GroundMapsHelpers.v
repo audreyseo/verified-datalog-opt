@@ -369,9 +369,24 @@ Lemma ground_maps_raw_cons_add_commute :
     ground_maps.Raw.PX.MapsTo x0 x1
                              (ground_maps.Raw.add x l1 ((s, g0) :: g)).
 Proof.
-Admitted.
+  induction g; intros.
+  - simpl in H1. invs H1.
+    + eapply ground_maps_eqke_inversion in H3. destruct H3. subst.
+      eapply ground_maps_raw_MapsTo_add_iff. eauto.
+      right. split; try congruence.
+      left. eauto.
+    + invs H3.
+      * eapply ground_maps_eqke_inversion in H4. destruct H4. subst.
+        eapply ground_maps_raw_MapsTo_add_iff. eauto. left. eauto.
+      * invs H4.
+  - eapply ground_maps_raw_MapsTo_cons_iff in H1. destruct H1; subst.
+    + destruct H1. subst. eapply ground_maps_raw_MapsTo_add_iff. eauto. right. split; eauto.
+    + invs H. eapply ground_maps_raw_MapsTo_add_iff in H1; eauto. eapply ground_maps_raw_MapsTo_add_iff; eauto.
+      destruct H1.
+      * left. eauto.
+      * right. destruct H1. split; eauto.
+Qed.
 
-(* TODO *)
 Lemma setoid_list_eqk_contradiction :
   forall l g0 s l1,
   SetoidList.InA
@@ -384,7 +399,19 @@ Lemma setoid_list_eqk_contradiction :
          s, g0) (l) ->
   False.
 Proof.
-Admitted.
+  induction l; intros.
+  - invs H.
+  - destruct a. invs H.
+    + invs H3. simpl in H2. subst.
+      negate_negated H1. left. reflexivity. congruence.
+    + assert (~ SetoidList.InA (ground_maps.Raw.PX.eqk (elt := gt_set_type)) (s, g0) l).
+      unfold not. intros.
+      negate_negated H1. right. eauto.
+      congruence.
+      invs H0.
+      specialize (IHl _ _ _ H3 H7 H2).
+      contradiction.
+Qed.
 
 Lemma ground_maps_raw_MapsTo_eq_cons :
   forall g l0 l1 s,
@@ -422,23 +449,20 @@ Lemma eqk_implies_not_NoDup :
   ~ SetoidList.NoDupA
          (ground_maps.Raw.PX.eqk (elt:=list (list ground_types)))
          (x :: y :: g).
-Proof. intros. unfold not. intros.
- Admitted.
-(* induction g; intros.
-- unfold not. intros. invs H0. unfold not in H3.
 Proof.
   induction g; intros.
-  - split.
-    + econstructor. unfold not; intros. invs H0.
-      econstructor.
-    + econstructor. unfold not; intros. invs H0. econstructor.
-  - invs H.
-    split; eauto.
-    eapply notIn_setoid_cons_subsets in H2. invs H3. econstructor; eauto.
+  - unfold not. intros. invs H. destruct x, y.
+    simpl in H2. invs H2. invs H0.
+    negate_negated H4.
+    left. reflexivity. congruence.
+  - unfold not. intros. invs H0.
+    destruct x, y.
+    invs H.
+    simpl in H1. subst.
+    negate_negated H3.
+    left. eauto. congruence.
 Qed.
-  *)
 
-(* TODO *)
 Lemma setoid_list_NoDup_eqk_fst :
   forall g s l1 l2,
   SetoidList.NoDupA
@@ -450,17 +474,28 @@ Lemma setoid_list_NoDup_eqk_fst :
 Proof.
 induction g; intros.
 - econstructor. unfold not. intros. invs H0. econstructor.
-- econstructor. unfold not. intros. invs H0. 
-(* This NoDup lemma seems to be going the wrong direction *)
-(* but it's the only way I see to apply the inductive hypothesis  *)
-pose proof (NoDup_setoid_cons_subsets _ _ _ H). destruct H1.
-apply IHg with (l2:=l2) in H1. apply eqk_implies_not_NoDup with (g:=g) in H2.
-(* Now it would be nice to go the other way back *)
-(* The inverse of the NoDup lemma is true iff x != y *)
-(* And here, x = y *)
-
-
-Admitted.
+- econstructor. unfold not. intros. invs H0.
+  invs H. destruct a.
+  eapply IHg in H5.
+  invs H2.
+  simpl in H1. subst.
+  invs H. negate_negated H6.
+  left. eauto.
+  congruence.
+  invs H.
+  negate_negated H4.
+  invs H0.
+  destruct a. invs H3. simpl in H1. invs H1.
+  left. reflexivity.
+  right.
+  pose proof (setoid_list_eqk_contradiction).
+  specialize (H1 _ _ _ _ H0 H5 H4). contradiction.
+  pose proof (setoid_list_eqk_contradiction).
+  specialize (H1 _ _ _ _ H0 H5 H4). contradiction.
+  invs H. eauto.
+  Unshelve.
+  eauto.
+Qed.
     
 Lemma ground_maps_add_Subset  :
   forall (g1 g2: gm_type) (l1 l2: list (list ground_types)) x,

@@ -45,7 +45,6 @@ Proof.
   simpl; eauto.
 Qed.
 
-(* TODO *)
 Lemma check_join_vars_adequacy :
   forall (jvs: list string) (t1 t2: tup_type),
     check_join_vars_rel jvs t1 t2 <->
@@ -177,7 +176,34 @@ Lemma select_tuples_fold_None :
       else None
      else option_map (cons elmt) acc) assoc None = None.
 Proof.
-  induction assoc; intros.
+  induction assoc; simpl; intros.
+  - reflexivity.
+  - destruct a. destruct (string_dec s0 s); eauto.
+    subst. destruct (Ground_Types_as_OTF.eq_dec g g0); eauto.
+Qed.
+
+Lemma select_tuples_adequacy_forward :
+  forall (assoc: tup_type) (s: string) (g: ground_types),
+    assoc <> nil ->
+    assoc_keys_NoDup assoc ->
+    select_tuples_rel s g assoc ->
+      select_tuples s g assoc = Some (rev assoc).
+Proof.
+  induction assoc; simpl; intros.
+  - congruence.
+  - invs H0.
+    destruct (string_dec s s0).
+    + 
+    
+Admitted.
+
+Lemma select_tuples_adequacy_backward :
+  forall (assoc: tup_type) (s: string) (g: ground_types),
+    assoc <> nil ->
+    assoc_keys_NoDup assoc ->
+    select_tuples s g assoc = Some (rev assoc) ->
+    select_tuples_rel s g assoc.
+Proof.
 Admitted.
 
 (* Not strictly necessary *)
@@ -285,6 +311,26 @@ Inductive join_tuples_rel_helper : list string -> list string -> list string -> 
 
 Require Import Program.Equality.
 
+Lemma check_join_vars_nil_nil_helper :
+  forall jvs,
+    fold_left
+      (fun (acc : bool) (_ : string) => if acc then false else false) jvs
+      false = false.
+Proof.
+  induction jvs; simpl; eauto.
+Qed.
+
+Lemma check_join_vars_nil_nil :
+  forall jvs,
+    jvs <> nil ->
+    check_join_vars jvs nil nil = false.
+Proof.
+  destruct jvs; simpl; intros.
+  - congruence.
+  - unfold check_join_vars. simpl.
+    eapply check_join_vars_nil_nil_helper.
+Qed.
+
 Section JoinTuplesAdequate.
   Hypothesis (jvs: list string).
   Hypothesis (assoc1 assoc2: tup_type).
@@ -303,7 +349,9 @@ Section JoinTuplesAdequate.
     dependent induction J.
     - unfold jv_set in x1. unfold list_to_string_set in x1. destruct jvs.
       + congruence.
-      + admit.
+      + simpl. erewrite check_join_vars_nil_nil.
+        admit. (* this is simply ridiculous because adding anything should mean that it's nonnil *)
+        congruence.
     - specialize (IHJ NonNil).
       destruct (string_sets.this assoc1_vars).
       + invs x.
@@ -332,7 +380,7 @@ Section JoinTuplesAdequate.
         (* induction jvs; intros. *)
   Admitted.
 End JoinTuplesAdequate.
-   
+
                       
 (*                           jvs          left       right      parts of left joined parts of right *)
 (* Inductive join_tuples_rel : list string -> tup_type -> tup_type -> tup_type -> tup_type -> tup_type -> Prop := *)
@@ -669,7 +717,6 @@ Proof.
 Qed.
   
 
-(* TODO *)
 Lemma check_join_vars_symmetric :
   forall (jvs: list string) (t1 t2: tup_type),
     check_join_vars jvs t1 t2 = check_join_vars jvs t2 t1.
@@ -878,7 +925,7 @@ Proof.
         destruct H; eauto.
         right. eapply in_app_iff; eauto.
 Qed.
-(* TODO *)
+
 Lemma fold_left_app_comm :
   forall (g1 g2: set (tup_type * tup_type)) init jvs,
     fold_left
@@ -946,7 +993,7 @@ Proof.
     unfold set_prod. unfold list_prod. erewrite app_nil_end; eauto.
 Qed.
 
-(* TODO *)
+
 Lemma fold_left_switch :
   forall (jvs: list string) g1 g2 init,
   fold_left

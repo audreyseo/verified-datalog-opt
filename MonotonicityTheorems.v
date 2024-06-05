@@ -181,6 +181,116 @@ Proof.
   eapply IHg in H. eapply Bool.andb_true_iff in H. eapply H.
 Qed.
 
+Lemma ground_maps_equal_nil_helper :
+  forall g,
+    ground_maps.Raw.fold
+        (fun (_ : ground_maps.Raw.key) (_ : list (list ground_types))
+           (_ : bool) => false) g false = false.
+Proof.
+  induction g; simpl; intros; eauto.
+  destruct a. eauto.
+Qed.
+
+Lemma ground_maps_equal_nil :
+  forall g,
+    ground_maps.Raw.submap
+      (fun e' e : list (list ground_types) =>
+         List_Ground_Type_as_OT.eqb e e') g nil = true ->
+    g = nil.
+Proof.
+  induction g; simpl; intros.
+  - unfold ground_maps.Raw.submap. simpl. reflexivity.
+  - unfold ground_maps.Raw.submap in *. simpl in *.  destruct a.
+    rewrite ground_maps_equal_nil_helper in H. congruence.
+Qed.
+    
+                                                      
+
+Lemma ground_maps_Equal_implies_equal_backward :
+  forall (g g': gm_type),
+    ground_maps.equal List_Ground_Type_as_OT.eqb g g' = true ->
+    ground_maps.Equal (elt:=gt_set_type) g g'.
+Proof.
+  destruct g. rename this into g. induction g; simpl; intros.
+  - destruct g'. unfold ground_maps.equal in H. unfold ground_maps.Raw.equal in H. simpl in H.
+    eapply ground_maps_equal_nil in H. subst.
+    unfold ground_maps.Equal. intros. unfold ground_maps.find. simpl. eauto.
+  - unfold ground_maps.Equal in *. unfold ground_maps.equal in *.
+    simpl in H. destruct g'. simpl in *. rename this into g'.
+    unfold ground_maps.Raw.equal in *.
+    eapply Bool.andb_true_iff in H. destruct H.
+    (* should be true, since (a :: g) ⊂ g' should mean that g' Equals some a :: g'', where g'' = g' \ a *)
+    admit.
+  
+Admitted.
+
+Lemma ground_maps_Equal_implies_submap :
+  forall g g',
+    (forall (y : ground_maps.key),
+      ground_maps.Raw.find (elt:=list (list ground_types)) y g
+      = ground_maps.Raw.find (elt:=list (list ground_types)) y g') ->
+    ground_maps.Raw.submap List_Ground_Type_as_OT.eqb g g' = true.
+Proof.
+  induction g; simpl; intros.
+  - destruct g'; simpl; eauto.
+  - destruct a. destruct g'.
+    + specialize (H s).
+      destruct (String_as_OT.eq_dec s s); simpl in H; try congruence.
+    + unfold ground_maps.Raw.submap.
+      (* should be provable, though annoying. Probably don't need to know that it's nodup, though decomposing (p :: g') appropriately will be annoying, since order could be a problem for lookups *)
+      
+
+Admitted.
+
+Lemma ground_maps_Equal_implies_submap' :
+  forall g g',
+    (forall (y : ground_maps.key),
+      ground_maps.Raw.find (elt:=list (list ground_types)) y g
+      = ground_maps.Raw.find (elt:=list (list ground_types)) y g') ->
+    ground_maps.Raw.submap List_Ground_Type_as_OT.eqb g' g = true.
+Proof.
+  induction g; simpl; intros.
+  - destruct g'; simpl; eauto.
+    destruct p. specialize (H s). simpl in H. destruct (String_as_OT.eq_dec s s); try congruence.
+  - destruct a. destruct g'.
+    + specialize (H s).
+      destruct (String_as_OT.eq_dec s s); simpl in H; try congruence.
+    + unfold ground_maps.Raw.submap. simpl in *. destruct p as [k' e'].
+      
+      (* potentially more annoying than the other one, could be worth looking into other encodings of finite maps more seriously? *)
+Admitted.
+
+Lemma ground_maps_Equal_implies_equal_forward :
+  forall (g g': gm_type),
+    ground_maps.Equal (elt:=gt_set_type) g g' ->
+    ground_maps.equal List_Ground_Type_as_OT.eqb g g' = true.
+Proof.
+  destruct g. rename this into g. induction g; simpl; intros.
+  - destruct g'. unfold ground_maps.Equal in H.
+    destruct this.
+    + unfold ground_maps.equal. simpl. unfold ground_maps.Raw.equal. simpl.
+      unfold ground_maps.Raw.submap. simpl. eauto.
+    + destruct p. specialize (H s). unfold ground_maps.find in H. simpl in H. destruct (String_as_OT.eq_dec s s); try congruence.
+  - destruct g'. unfold ground_maps.Equal in H.
+    destruct this.
+    + destruct a. specialize (H s). unfold ground_maps.find in H. simpl in H. destruct (String_as_OT.eq_dec s s); try congruence.
+    + unfold ground_maps.find in H. simpl in H. 
+      unfold ground_maps.equal. simpl.
+      unfold ground_maps.Raw.equal. eapply Bool.andb_true_iff. split.
+      * eapply ground_maps_Equal_implies_submap; simpl. eauto.
+      * 
+Admitted.
+  
+
+
+Lemma ground_maps_Equal_implies_equal' :
+  forall (g g': gm_type),
+    ground_maps.Equal (elt:=gt_set_type) g g' <->
+      ground_maps.equal List_Ground_Type_as_OT.eqb g g' = true.
+Proof.
+  intros. split; eauto using  ground_maps_Equal_implies_equal_backward,  ground_maps_Equal_implies_equal_forward.
+Admitted.
+
 
 (* Not extremely necessary, also ended up being grosser than I thought *)
 Lemma ground_maps_Equal_implies_equal :
@@ -329,12 +439,50 @@ Proof.
           admit.           
 Admitted.
 
+Lemma ground_maps_Nequal_nil_implies_nonempty :
+  forall g,
+    ~
+      (forall y : ground_maps.key,
+          None = ground_maps.Raw.find (elt:=list (list ground_types)) y g) ->
+    g <> nil.
+Proof.
+  destruct g; simpl; intros.
+  - contradict H. eauto.
+  - congruence.
+Qed.
+
+Lemma ground_maps_submap_nil_false_implies_nonnil :
+  forall g,
+   ground_maps.Raw.submap
+    (fun e' e : list (list ground_types) =>
+       List_Ground_Type_as_OT.eqb e e') g nil = false <->
+     g <> nil.
+Proof.
+  induction g; simpl; split; intros.
+  - unfold ground_maps.Raw.submap in H. simpl in H. congruence.
+  - congruence.
+  - congruence.
+  - unfold ground_maps.Raw.submap. simpl. destruct a. unfold ground_maps.Raw.submap in IHg. simpl in IHg. eapply ground_maps_equal_nil_helper.
+Qed.
+
 (* not extremely necessary *)
 Lemma ground_maps_NEqual_implies_nequal :
   forall (g g': gm_type),
     ~ ground_maps.Equal (elt:=gt_set_type) g g' <->
       ground_maps.equal List_Ground_Type_as_OT.eqb g g' = false.
 Proof.
+  destruct g. rename this into g. induction g; split; intros.
+  - destruct g'.
+    unfold ground_maps.equal. unfold ground_maps.Raw.equal. simpl.
+    unfold ground_maps.Equal in H. simpl in H. unfold ground_maps.find in H. simpl in H. eapply ground_maps_Nequal_nil_implies_nonempty in H. 
+
+    destruct this.
+    + simpl in H. simpl. unfold ground_maps.Raw.submap. simpl. contradict H. intros. eauto.
+    + simpl in H. destruct p. simpl. eapply ground_maps_submap_nil_false_implies_nonnil. eauto.
+  - unfold ground_maps.equal in H. simpl in H.
+    intros H'. eapply ground_maps_Equal_implies_equal_forward in H'.
+    unfold ground_maps.equal in H'. simpl in H'. congruence.
+  - 
 Admitted.
 
 

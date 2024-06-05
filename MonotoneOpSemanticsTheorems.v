@@ -497,7 +497,6 @@ induction v; split; intros.
   + eassumption.
 Qed.
 
-(* TODO *)
 Lemma proj_relation_fold_Some :
   forall v pvs v' init,
     Some v' =

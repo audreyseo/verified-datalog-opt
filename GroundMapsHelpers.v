@@ -358,7 +358,6 @@ Proof.
   simpl in H. eapply H.
 Qed.
 
-(* TODO *)
 Lemma ground_maps_raw_cons_add_commute :
   forall g x0 x1 x l1 s g0,
     SetoidList.NoDupA (ground_maps.Raw.PX.eqk (elt:=list (list ground_types)))
